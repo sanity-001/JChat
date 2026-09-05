@@ -13,7 +13,9 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import threading
 import time
+from functools import wraps
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS docs (
@@ -68,7 +70,8 @@ def content_fingerprint(text: str) -> str:
 class SQLiteStore:
     def __init__(self, path: str | None = None):
         self.db_path = path or ":memory:"
-        self.conn = sqlite3.connect(self.db_path)
+        self._lock = threading.RLock()
+        self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self.conn.executescript(SCHEMA)
         self.conn.commit()
 
@@ -264,3 +267,18 @@ class SQLiteStore:
             "last_access_at": row[7],
             "score": row[8],
         }
+
+
+def _locked(fn):
+    @wraps(fn)
+    def wrapper(self, *args, **kwargs):
+        with self._lock:
+            return fn(self, *args, **kwargs)
+
+    return wrapper
+
+
+# 线程安全：连接跨线程使用（check_same_thread=False），所有公共方法加锁串行化
+for _name, _fn in list(vars(SQLiteStore).items()):
+    if callable(_fn) and not _name.startswith("__") and _name != "close":
+        setattr(SQLiteStore, _name, _locked(_fn))

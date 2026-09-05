@@ -1,4 +1,4 @@
-"""应用入口与整合：配置、存储、上下文、worker 队列、会话（悬停+大窗共享）、主动搭话、会话抽取。"""
+﻿"""应用入口与整合：配置、存储、上下文、worker 队列、会话（悬停+大窗共享）、主动搭话、会话抽取。"""
 
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ class App:
         self.companion: CompanionWindow | None = None
         self.through_hover = False
         self.session_id = self._new_session_id()
-        self.history = ChatHistory(self.store.conn, self.session_id)
+        self.history = ChatHistory(self.store, self.session_id)
         self._session_timer = QTimer()
         self._session_timer.setSingleShot(True)
         self._session_timer.timeout.connect(self._on_session_end)
@@ -189,7 +189,7 @@ class App:
     def _reset_session(self) -> None:
         self.window_msgs = []
         self.session_id = self._new_session_id()
-        self.history = ChatHistory(self.store.conn, self.session_id)
+        self.history = ChatHistory(self.store, self.session_id)
         if self.companion:
             self.companion.pending_proactive = None
 
