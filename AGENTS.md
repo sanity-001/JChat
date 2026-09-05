@@ -10,8 +10,9 @@
 ## 项目结构
 
 - `src/JChat/` — 主包：`app.py`（入口整合）、`agent/`（循环/工具/抽取/prompt）、`memory/`（合并的 MemoKG）、`ui/`（PySide6）、`llm/`（OpenAI 兼容客户端）
-- `wayfinder/` — 路线图与决策票据（local-markdown tracker）
+- `wayfinder/` — 路线图与决策票据（local-markdown tracker，**不入库**）
 - `prototypes/` — 原型（丢弃件，勿移入生产代码）
+- `tests/`、`research/` — 测试与前期调研（**不入库**）
 - 域词汇表见 `CONTEXT.md`（术语用"搭子/伙伴"，禁用"桌宠"）
 
 ## 常用命令
