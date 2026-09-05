@@ -1,10 +1,9 @@
-"""搭子主窗口（重构）：无边框透明置顶 gif + 悬停交互。
+"""搭子主窗口：无边框透明置顶 gif + 悬停交互（绝对定位，伙伴本体固定不位移）。
 
 交互（Q1/Q2/Q16/Q17）：
-- 悬停伙伴本体（含气泡/输入框区域）→ 唤出悬停区；离开 1.5s 收起
-- 气泡在伙伴上方（只显示最新一条回复，可滚动，工具胶囊，可跳大窗）
-- 输入框在伙伴下方（Enter 发送）
-- 主动搭话：气泡 + 输入框同时唤出（不因输入收起）
+- 悬停伙伴/气泡/输入框区域 → 唤出悬停区；光标真正离开窗口 1.5s 后收起（打字不受影响）
+- 气泡在伙伴上方（最新一条回复，可滚动，工具胶囊，可跳大窗）；输入框在伙伴下方
+- 主动搭话：气泡 + 输入框同时唤出（只随离开收起）
 - 伙伴常驻：大窗打开时悬停区关闭、伙伴保持可见（Q6/Q7）
 """
 
@@ -13,8 +12,8 @@ from __future__ import annotations
 import random
 import threading
 
-from PySide6.QtCore import QEvent, QPoint, QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QAction, QMovie
+from PySide6.QtCore import QEvent, QPoint, QRect, QSize, Qt, QTimer, Signal
+from PySide6.QtGui import QAction, QCursor, QMovie
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -65,38 +64,26 @@ class CompanionWindow(QWidget):
         c = self.config["companion"]
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.SubWindow)
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setAttribute(Qt.WA_ShowWithoutActivating)
         self.pet_width = c["width"]
         self.pet_height = c["height"]
-        self.setFixedSize(self.pet_width + 60, BUBBLE_ZONE + self.pet_height + INPUT_ZONE + 30)
-        screen = QApplication.primaryScreen().availableGeometry()
-        self.move(screen.width() - self.width() - 400, screen.height() - self.height() - 80)
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 4, 10, 4)
-        layout.setSpacing(4)
-
-        # 气泡区（上方）
+        # 气泡区（上方，绝对定位）
         self.bubble_host = QWidget(self)
-        self.bubble_host.setFixedHeight(BUBBLE_ZONE - 10)
         self.bubble_layout = QVBoxLayout(self.bubble_host)
         self.bubble_layout.setContentsMargins(6, 4, 6, 4)
         self.bubble_layout.addStretch()
         self.bubble_host.hide()
-        layout.addWidget(self.bubble_host)
 
-        # 伙伴本体（中间）
+        # 伙伴本体（中间，绝对定位，悬停/收起均不移动）
         icon_path = PROJECT_ROOT / c["icon"]
         self.pet_movie = QMovie(str(icon_path))
         self.pet_movie.setScaledSize(QSize(self.pet_width, self.pet_height))
         self.pet_label = QLabel(self)
         self.pet_label.setMovie(self.pet_movie)
         self.pet_movie.start()
-        layout.addWidget(self.pet_label, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
 
-        # 输入区（下方）
+        # 输入区（下方，绝对定位）
         self.input_host = QWidget(self)
-        self.input_host.setFixedHeight(INPUT_ZONE)
         input_layout = QVBoxLayout(self.input_host)
         input_layout.setContentsMargins(10, 6, 10, 6)
         self.input = QLineEdit()
@@ -105,9 +92,26 @@ class CompanionWindow(QWidget):
         self.input.returnPressed.connect(self._send)
         input_layout.addWidget(self.input)
         self.input_host.hide()
-        layout.addWidget(self.input_host)
 
+        self._relayout()
+        screen = QApplication.primaryScreen().availableGeometry()
+        self.move(screen.width() - self.width() - 400, screen.height() - self.height() - 80)
         self._init_menu()
+        self._install_hover_filter()
+
+    def _relayout(self) -> None:
+        w = self.pet_width + 60
+        h = BUBBLE_ZONE + self.pet_height + INPUT_ZONE + 30
+        self.setFixedSize(w, h)
+        pet_x = (w - self.pet_width) // 2
+        pet_y = BUBBLE_ZONE + 6
+        self.pet_label.setGeometry(pet_x, pet_y, self.pet_width, self.pet_height)
+        self.bubble_host.setGeometry(5, 2, w - 10, BUBBLE_ZONE - 8)
+        self.input_host.setGeometry(5, h - INPUT_ZONE - 4, w - 10, INPUT_ZONE)
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        self._relayout()
+        super().resizeEvent(event)
 
     def _init_menu(self) -> None:
         self.menu = QMenu(self)
@@ -127,16 +131,31 @@ class CompanionWindow(QWidget):
         self.open_chat_requested.emit()
 
     # ------------------------------------------------------------ hover
+    def _install_hover_filter(self) -> None:
+        for w in (self, self.bubble_host, self.input_host, self.input):
+            w.installEventFilter(self)
+
+    def eventFilter(self, obj, event) -> bool:  # noqa: N802
+        if event.type() == QEvent.Enter:
+            self._collapse_timer.stop()
+            if not self.chat_window_open:
+                self._show_hover()
+        elif event.type() == QEvent.Leave:
+            if self._cursor_outside():
+                self._collapse_timer.start(COLLAPSE_MS)
+        return super().eventFilter(obj, event)
+
+    def _cursor_outside(self) -> bool:
+        rect = QRect(self.mapToGlobal(QPoint(0, 0)), self.size())
+        return not rect.contains(QCursor.pos())
+
     def _show_hover(self) -> None:
         if self.chat_window_open:
             return
         self._hover_visible = True
         self._collapse_timer.stop()
+        self.bubble_host.show()
         self.input_host.show()
-        if self.bubble_host.isHidden() and not self.pending_proactive:
-            self.bubble_host.show()
-        else:
-            self.bubble_host.show()
 
     def _collapse(self) -> None:
         self._hover_visible = False
@@ -151,14 +170,6 @@ class CompanionWindow(QWidget):
             self._collapse()
         else:
             self._collapse_timer.stop()
-
-    def enterEvent(self, event: QEvent) -> None:  # noqa: N802
-        self._collapse_timer.stop()
-        if not self.chat_window_open:
-            self._show_hover()
-
-    def leaveEvent(self, event: QEvent) -> None:  # noqa: N802
-        self._collapse_timer.start(COLLAPSE_MS)
 
     # ------------------------------------------------------------ bubble
     def _set_bubble(self, text: str, tools: list | None = None) -> None:
@@ -176,16 +187,16 @@ class CompanionWindow(QWidget):
         )
         for ev in tools or []:
             bubble.add_tool_capsule(ev.name, ev.status, ev.output_preview)
+        bubble.installEventFilter(self)
+        bubble.text_browser.installEventFilter(self)
         self.bubble_layout.insertWidget(0, bubble, alignment=Qt.AlignHCenter)
 
     def show_reply(self, text: str, tools: list | None = None) -> None:
-        """显示最新回复气泡（悬停交互：随输入框同进退）。"""
         self.pending_proactive = None
         self._set_bubble(text, tools)
         self._show_hover()
 
     def show_proactive(self, text: str) -> None:
-        """主动搭话：气泡 + 输入框同时唤出（不因输入收起，只随离开收起）。"""
         self.pending_proactive = text
         self._set_bubble(text)
         self._show_hover()
