@@ -32,9 +32,9 @@ class AgentContext:
 
 
 def build_turn_messages(
-    persona: str, window: list[dict], user_text: str, ctx: AgentContext
+    persona: str, window: list[dict], user_text: str, ctx: AgentContext, proactive_text: str | None = None
 ) -> tuple[list[dict], str]:
-    """组装本轮 messages：system(persona+记忆卡) + 窗口 + 当前用户消息。返回 (messages, memory_card)。"""
+    """组装本轮 messages：system(persona+记忆卡) + 窗口 + (主动搭话上下文) + 当前用户消息。"""
     window_text = " ".join(
         f"{m['role']}: {m['content']}" for m in window[-ctx.config["memory"]["window_turns"] * 2 :]
     )
@@ -43,13 +43,19 @@ def build_turn_messages(
     messages: list[dict] = [message("system", system)]
     for m in window:
         messages.append(message(m["role"], m["content"]))
+    if proactive_text:
+        messages.append(message("assistant", f"（你刚才主动对用户说：{proactive_text}）"))
     messages.append(message("user", user_text))
     return messages, memory_card
 
 
-def run_turn(user_text: str, window: list[dict], ctx: AgentContext) -> tuple[str, list[ToolEvent]]:
+def run_turn(
+    user_text: str, window: list[dict], ctx: AgentContext, proactive_text: str | None = None
+) -> tuple[str, list[ToolEvent]]:
     """执行一轮对话（tool-calling 循环）。返回 (最终回复, 工具事件列表)。"""
-    messages, _card = build_turn_messages(ctx.config["companion"]["persona"], window, user_text, ctx)
+    messages, _card = build_turn_messages(
+        ctx.config["companion"]["persona"], window, user_text, ctx, proactive_text
+    )
     events: list[ToolEvent] = []
     max_iter = ctx.config["agent"]["max_iterations"]
     schemas = tool_mod.tool_schemas()

@@ -1,103 +1,126 @@
-"""自绘 UI 组件：渐变气泡（Bubble）、便签风工具卡（ToolCard）。"""
+"""马卡龙风格自绘组件：回复气泡（MessageBubble）、工具胶囊、便签工具卡、记忆 chips。"""
 
 from __future__ import annotations
 
-from PySide6.QtCore import QSize
-from PySide6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
     QPlainTextEdit,
+    QPushButton,
     QSizePolicy,
+    QTextBrowser,
     QVBoxLayout,
-    QWidget,
 )
 
-MAX_BUBBLE_WIDTH = 460
+PALETTE = {
+    "user": {"bg": "#FFE0EC", "fg": "#8A4A5E"},
+    "companion": {"bg": "#DFF5E1", "fg": "#3A5A40"},
+    "capsule": {"bg": "#FFF6C9", "fg": "#8A6D00"},
+    "chip": "#5B9BD5",
+}
 
 
-class Bubble(QWidget):
-    """贴纸气泡：圆角 + 尾部小尖角 + 渐变（用户）/ 深色（搭子）。"""
+class MessageBubble(QFrame):
+    """可滚动回复气泡：圆角卡片 + 文本（可滚动）+ 工具胶囊 + 可选"查看全文"链接。"""
 
-    def __init__(self, role: str, text: str, font_size: int = 14, parent=None):
+    def __init__(
+        self,
+        role: str,
+        text: str,
+        parent=None,
+        max_height: int = 240,
+        show_full_link: bool = False,
+        on_full_link=None,
+        font_size: int = 14,
+    ):
         super().__init__(parent)
-        self.role = role
-        self.text = text
-        self._font = QFont("Microsoft YaHei", font_size)
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        role = role if role in PALETTE else "companion"
+        color = PALETTE[role]
+        self.setStyleSheet(
+            f"QFrame {{ background-color: {color['bg']}; border: none; border-radius: 20px; }}"
+        )
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(14, 10, 14, 10)
+        layout.setSpacing(6)
 
-    def _document(self) -> object:
-        from PySide6.QtGui import QTextDocument
+        self.text_browser = QTextBrowser()
+        self.text_browser.setFrameShape(QFrame.NoFrame)
+        self.text_browser.setStyleSheet(
+            f"QTextBrowser {{ background: transparent; color: {color['fg']};"
+            f" font-size: {font_size}px; border: none; }}"
+        )
+        self.text_browser.setPlainText(text)
+        self.text_browser.setMaximumHeight(max_height)
+        self.text_browser.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        layout.addWidget(self.text_browser)
 
-        doc = QTextDocument()
-        doc.setDefaultFont(self._font)
-        doc.setDocumentMargin(10)
-        doc.setTextWidth(MAX_BUBBLE_WIDTH)
-        doc.setPlainText(self.text)
-        return doc
+        self.tool_row = QHBoxLayout()
+        self.tool_row.setSpacing(6)
+        layout.addLayout(self.tool_row)
 
-    def sizeHint(self):  # noqa: N802
-        doc = self._document()
-        return doc.size().toSize() + QSize(28, 24)
+        if show_full_link:
+            self.full_link = QPushButton("查看全文 ↗")
+            self.full_link.setCursor(Qt.PointingHandCursor)
+            self.full_link.setStyleSheet(
+                "QPushButton { background: transparent; border: none; color:#C9A9FF;"
+                " font-size:12px; text-align:left; }"
+            )
+            self.full_link.clicked.connect(lambda: on_full_link and on_full_link())
+            layout.addWidget(self.full_link, alignment=Qt.AlignLeft)
 
-    def paintEvent(self, event):  # noqa: N802
-        doc = self._document()
-        rect = self.rect().adjusted(2, 2, -2, -2)
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+    def add_tool_capsule(self, name: str, status: str = "done", output: str = "") -> None:
+        capsule = QPushButton(f"🔧 {name} {'✓' if status == 'done' else '✗'}")
+        capsule.setCursor(Qt.PointingHandCursor)
+        capsule.setStyleSheet(
+            f"QPushButton {{ background:{PALETTE['capsule']['bg']}; color:{PALETTE['capsule']['fg']};"
+            " border:none; border-radius:12px; padding:3px 10px; font-size:12px; }"
+        )
+        capsule.clicked.connect(lambda: self._toggle_output(capsule, output))
+        self.tool_row.addWidget(capsule)
 
-        path = QPainterPath()
-        radius = 18
-        tail = 12
-        if self.role == "user":
-            path.addRoundedRect(rect, radius, radius)
-            path.moveTo(rect.right() - radius, rect.top() + radius)
-            path.lineTo(rect.right() + tail, rect.top() + radius)
-            path.lineTo(rect.right() - radius + 4, rect.top() + radius + 14)
-            grad = QLinearGradient(rect.topLeft(), rect.bottomRight())
-            grad.setColorAt(0, QColor("#4f8cff"))
-            grad.setColorAt(1, QColor("#7c5cff"))
-        else:
-            path.addRoundedRect(rect, radius, radius)
-            path.moveTo(rect.left() + radius, rect.top() + radius)
-            path.lineTo(rect.left() - tail, rect.top() + radius)
-            path.lineTo(rect.left() + radius - 4, rect.top() + radius + 14)
-            grad = QLinearGradient(rect.topLeft(), rect.bottomRight())
-            grad.setColorAt(0, QColor("#202843"))
-            grad.setColorAt(1, QColor("#1b2230"))
-        painter.fillPath(path, grad)
-        painter.setPen(QPen(QColor(255, 255, 255, 30), 1))
-        painter.drawPath(path)
-
-        doc.drawContents(painter, self.rect().adjusted(10, 6, -10, -6))
+    def _toggle_output(self, capsule: QPushButton, output: str) -> None:
+        for i in range(self.layout().count()):
+            w = self.layout().itemAt(i).widget()
+            if isinstance(w, QPlainTextEdit):
+                w.setVisible(not w.isVisible())
+                return
+        out = QPlainTextEdit()
+        out.setReadOnly(True)
+        out.setMaximumHeight(120)
+        out.setStyleSheet(
+            f"QPlainTextEdit {{ background:{PALETTE['capsule']['bg']};"
+            f" color:{PALETTE['capsule']['fg']}; border:none; border-radius:10px; font-size:12px; }}"
+        )
+        out.setPlainText(output)
+        self.layout().addWidget(out)
 
 
 class ToolCard(QFrame):
-    """便签风工具调用卡片：标题可点击折叠，显示状态与输出。"""
+    """便签风工具调用卡片（大窗使用）：标题可点击折叠。"""
 
     def __init__(self, name: str, status: str = "running", output: str = "", parent=None):
         super().__init__(parent)
         self.setObjectName("ToolCard")
         self.setStyleSheet(
-            "QFrame#ToolCard { background:#fff7e0; border:none; border-radius:12px; }"
-            "QLabel { color:#3a2c00; } QPlainTextEdit { background:transparent; color:#5a4600; border:none; }"
+            "QFrame#ToolCard { background:#FFF6C9; border:none; border-radius:14px; }"
+            "QLabel { color:#8A6D00; } QPlainTextEdit { background:transparent; color:#8A6D00; border:none; }"
         )
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 8, 12, 8)
-        self.head = QHBoxLayout()
-        self.icon = QLabel("🔧")
-        self.title = QLabel(name)
-        self.title.setStyleSheet("font-weight:700; color:#3a2c00;")
+        head = QHBoxLayout()
+        self.title = QLabel(f"🔧 {name}")
+        self.title.setStyleSheet("font-weight:700; color:#8A6D00;")
         self.status_label = QLabel(status)
-        self.status_label.setStyleSheet("font-size:11px; color:#a08a3a;")
+        self.status_label.setStyleSheet("font-size:11px; color:#B59A3C;")
         self.arrow = QLabel("▾")
-        self.head.addWidget(self.icon)
-        self.head.addWidget(self.title)
-        self.head.addWidget(self.status_label)
-        self.head.addStretch()
-        self.head.addWidget(self.arrow)
-        layout.addLayout(self.head)
+        head.addWidget(self.title)
+        head.addWidget(self.status_label)
+        head.addStretch()
+        head.addWidget(self.arrow)
+        layout.addLayout(head)
         self.body = QPlainTextEdit()
         self.body.setReadOnly(True)
         self.body.setMaximumHeight(140)
@@ -119,14 +142,9 @@ class ToolCard(QFrame):
 
 
 class MemoryChip(QLabel):
-    def __init__(self, text: str, color: str = "#4f8cff", parent=None):
+    def __init__(self, text: str, parent=None):
         super().__init__(text, parent)
+        color = PALETTE["chip"]
         self.setStyleSheet(
-            f"background-color: rgba({_rgb(color)},0.15); color:{color};"
-            "border-radius:10px; padding:3px 10px; font-size:11px;"
+            f"background-color:#E3F0FF; color:{color}; border-radius:11px; padding:3px 12px; font-size:11px;"
         )
-
-
-def _rgb(color: str) -> str:
-    c = QColor(color)
-    return f"{c.red()},{c.green()},{c.blue()}"

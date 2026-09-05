@@ -1,4 +1,4 @@
-"""聊天窗（票据 006 C 方案）：伙伴卡片 + 渐变贴纸气泡 + 便签工具卡 + 记忆 chips。"""
+"""大窗（对话详情，Q5 原样保留 + 马卡龙 + 会话历史加载 Q14）。"""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from JChat.ui.widgets import Bubble, MemoryChip, ToolCard
+from JChat.ui.widgets import MemoryChip, MessageBubble, ToolCard
 
 
 class ChatWindow(QDialog):
@@ -26,7 +26,7 @@ class ChatWindow(QDialog):
         super().__init__(parent)
         self.config = config
         self.memory_count_fn = memory_count_fn
-        self.setWindowTitle(f"与{config['companion']['nickname']}聊天")
+        self.setWindowTitle(f"与{config['companion']['nickname']}聊天 · 对话详情")
         self.setObjectName("Root")
         self.resize(920, 640)
         self._build_ui()
@@ -37,22 +37,20 @@ class ChatWindow(QDialog):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # 伙伴卡片
         side = QFrame()
         side.setObjectName("Card")
-        side.setFixedWidth(270)
-        side.setStyleSheet("QFrame#Card { background:#12151d; border:none; border-radius:0; }")
+        side.setFixedWidth(260)
+        side.setStyleSheet("QFrame#Card { background:#FFF6EC; border:none; border-radius:0; }")
         side_layout = QVBoxLayout(side)
-        side_layout.setContentsMargins(24, 40, 24, 24)
+        side_layout.setContentsMargins(22, 36, 22, 22)
         side_layout.setAlignment(Qt.AlignTop)
 
         avatar = QLabel("小")
-        avatar.setFixedSize(120, 120)
+        avatar.setFixedSize(110, 110)
         avatar.setAlignment(Qt.AlignCenter)
         avatar.setStyleSheet(
-            "background:qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #ff8a5c, "
-            "stop:0.5 #ff4f8b, stop:1 #7c5cff);"
-            "color:white; font-size:48px; font-weight:700; border-radius:60px;"
+            "background:qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #FFB6C9, stop:1 #C9A9FF);"
+            "color:white; font-size:44px; font-weight:700; border-radius:55px;"
         )
         side_layout.addWidget(avatar, alignment=Qt.AlignHCenter)
 
@@ -67,9 +65,10 @@ class ChatWindow(QDialog):
         persona.setAlignment(Qt.AlignCenter)
         side_layout.addWidget(persona)
 
-        self.welcome = QLabel("💬 想聊点什么？我记性很好哦～")
+        self.welcome = QLabel("💬 这里展示完整的对话详情～")
         self.welcome.setStyleSheet(
-            "background:#1b2230; color:#e7ecf5; border-radius:14px; padding:10px 14px; font-size:13px;"
+            "background:#FFFFFF; color:#9C948A; border:2px solid #F0E3D4;"
+            "border-radius:14px; padding:10px 14px; font-size:13px;"
         )
         self.welcome.setWordWrap(True)
         side_layout.addSpacing(18)
@@ -77,7 +76,6 @@ class ChatWindow(QDialog):
         side_layout.addStretch()
         root.addWidget(side)
 
-        # 聊天卡片
         chat = QFrame()
         chat.setObjectName("Card")
         chat_layout = QVBoxLayout(chat)
@@ -119,8 +117,17 @@ class ChatWindow(QDialog):
 
     def _refresh_mem_chip(self) -> None:
         if self.memory_count_fn:
-            count = self.memory_count_fn()
-            self.mem_chip.setText(f"🧠 {count} 条记忆")
+            self.mem_chip.setText(f"🧠 {self.memory_count_fn()} 条记忆")
+
+    # ---------------------------------------------------------------- history
+    def load_history(self, messages: list[dict]) -> None:
+        """打开时加载当前会话全部历史（Q14：悬停+大窗共享会话）。"""
+        for m in messages:
+            if m["role"] == "user":
+                self._append_bubble("user", m["content"])
+            elif m["role"] == "assistant":
+                self._append_bubble("companion", m["content"])
+        self._scroll_bottom()
 
     # ---------------------------------------------------------------- messages
     def add_user_message(self, text: str) -> None:
@@ -149,7 +156,7 @@ class ChatWindow(QDialog):
         self.send_btn.setEnabled(not busy)
 
     def _append_bubble(self, role: str, text: str) -> None:
-        bubble = Bubble(role, text, font_size=self.config["ui"]["font_size"])
+        bubble = MessageBubble(role, text, font_size=self.config["ui"]["font_size"], max_height=300)
         row = QHBoxLayout()
         if role == "user":
             row.addStretch()
