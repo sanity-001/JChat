@@ -23,14 +23,16 @@ PALETTE = {
 
 
 class MessageBubble(QFrame):
-    """可滚动回复气泡：圆角卡片 + 文本（可滚动）+ 工具胶囊 + 可选"查看全文"链接。"""
+    """自适应回复气泡：高度随完整内容（文档实际高度），可选上限（大窗可无上限）。"""
+
+    TEXT_WIDTH = 320
 
     def __init__(
         self,
         role: str,
         text: str,
         parent=None,
-        max_height: int = 240,
+        max_height: int | None = None,
         show_full_link: bool = False,
         on_full_link=None,
         font_size: int = 14,
@@ -53,8 +55,9 @@ class MessageBubble(QFrame):
             f" font-size: {font_size}px; border: none; }}"
         )
         self.text_browser.setPlainText(text)
-        self.text_browser.setMaximumHeight(max_height)
-        self.text_browser.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.text_browser.setFixedWidth(self.TEXT_WIDTH)
+        self.text_browser.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self._autosize(max_height)
         layout.addWidget(self.text_browser)
 
         self.tool_row = QHBoxLayout()
@@ -70,6 +73,15 @@ class MessageBubble(QFrame):
             )
             self.full_link.clicked.connect(lambda: on_full_link and on_full_link())
             layout.addWidget(self.full_link, alignment=Qt.AlignLeft)
+
+    def _autosize(self, max_height: int | None) -> None:
+        """按文档实际高度设置气泡高度（完整内容自适应）。"""
+        doc = self.text_browser.document()
+        doc.setTextWidth(self.TEXT_WIDTH)
+        height = int(doc.size().height()) + 22
+        if max_height is not None:
+            height = min(height, max_height)
+        self.text_browser.setFixedHeight(height)
 
     def add_tool_capsule(self, name: str, status: str = "done", output: str = "") -> None:
         capsule = QPushButton(f"🔧 {name} {'✓' if status == 'done' else '✗'}")

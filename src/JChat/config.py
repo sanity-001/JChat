@@ -46,6 +46,7 @@ DEFAULT_CONFIG: dict = {
         "proactive_max": 30,
         "quiet_hours_start": 23,
         "quiet_hours_end": 8,
+        "reply_ttl_seconds": 30,
     },
     "memory": {
         "decay_rate": 0.01,
@@ -137,7 +138,8 @@ def _sanitize(cfg: dict) -> dict:
         check("companion", key, str)
     for key in ("random_walk", "random_chat"):
         check("companion", key, bool)
-    for key in ("width", "height", "proactive_min", "proactive_max", "quiet_hours_start", "quiet_hours_end"):
+    for key in ("width", "height", "proactive_min", "proactive_max", "quiet_hours_start",
+                "quiet_hours_end", "reply_ttl_seconds"):
         check("companion", key, int)
     for key, expected in {
         "working_dir": str,

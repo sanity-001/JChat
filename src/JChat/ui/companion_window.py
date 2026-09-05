@@ -52,11 +52,16 @@ class CompanionWindow(QWidget):
         self.direction = random.choice([-1, 1])
         self.pending_proactive: str | None = None
         self._hover_visible = False
+        self._bubble_active = False
+        self._bubble_zone = BUBBLE_ZONE
         self._away_since: float | None = None
         self._poll_timer = QTimer(self)
         self._poll_timer.setInterval(200)
         self._poll_timer.timeout.connect(self._poll_hover)
         self._poll_timer.start()
+        self._reply_timer = QTimer(self)
+        self._reply_timer.setSingleShot(True)
+        self._reply_timer.timeout.connect(self._expire_bubble)
         self._init_ui()
         self._init_movement()
         self._init_hotkeys()
@@ -102,12 +107,12 @@ class CompanionWindow(QWidget):
 
     def _relayout(self) -> None:
         w = self.pet_width + 60
-        h = BUBBLE_ZONE + self.pet_height + INPUT_ZONE + 30
+        h = self._bubble_zone + self.pet_height + INPUT_ZONE + 30
         self.setFixedSize(w, h)
         pet_x = (w - self.pet_width) // 2
-        pet_y = BUBBLE_ZONE + 6
+        pet_y = self._bubble_zone + 6
         self.pet_label.setGeometry(pet_x, pet_y, self.pet_width, self.pet_height)
-        self.bubble_host.setGeometry(5, 2, w - 10, BUBBLE_ZONE - 8)
+        self.bubble_host.setGeometry(5, 2, w - 10, self._bubble_zone - 8)
         self.input_host.setGeometry(5, h - INPUT_ZONE - 4, w - 10, INPUT_ZONE)
 
     def resizeEvent(self, event) -> None:  # noqa: N802
@@ -158,7 +163,8 @@ class CompanionWindow(QWidget):
             return
         self._hover_visible = True
         self._away_since = None
-        self.bubble_host.show()
+        if self._bubble_active:
+            self.bubble_host.show()
         self.input_host.show()
 
     def _collapse(self) -> None:
@@ -183,7 +189,7 @@ class CompanionWindow(QWidget):
         bubble = MessageBubble(
             "companion",
             text,
-            max_height=220,
+            max_height=None,
             show_full_link=True,
             on_full_link=self._menu_open_chat,
             font_size=self.config["ui"]["font_size"],
@@ -194,14 +200,33 @@ class CompanionWindow(QWidget):
         bubble.text_browser.installEventFilter(self)
         self.bubble_layout.insertWidget(0, bubble, alignment=Qt.AlignHCenter)
 
+        # 气泡随内容增高：窗口向上扩展（底部/伙伴位置不变）
+        hint_h = bubble.sizeHint().height()
+        self._bubble_zone = max(BUBBLE_ZONE, hint_h + 24)
+        old_h = self.height()
+        self._relayout()
+        delta = self.height() - old_h
+        if delta > 0:
+            self.move(self.x(), self.y() - delta)
+
+    def _expire_bubble(self) -> None:
+        """单次回复存在时间到：气泡消失（输入框不受影响）。"""
+        self._bubble_active = False
+        if self._hover_visible:
+            self.bubble_host.hide()
+
     def show_reply(self, text: str, tools: list | None = None) -> None:
         self.pending_proactive = None
         self._set_bubble(text, tools)
+        self._bubble_active = True
+        self._reply_timer.start(self.config["companion"].get("reply_ttl_seconds", 30) * 1000)
         self._show_hover()
 
     def show_proactive(self, text: str) -> None:
         self.pending_proactive = text
         self._set_bubble(text)
+        self._bubble_active = True
+        self._reply_timer.start(self.config["companion"].get("reply_ttl_seconds", 30) * 1000)
         self._show_hover()
 
     def _send(self) -> None:
