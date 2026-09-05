@@ -7,7 +7,7 @@ import random
 import sys
 from datetime import datetime
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QObject, QTimer, Signal
 from PySide6.QtWidgets import QApplication
 
 from JChat import __version__
@@ -33,12 +33,12 @@ logger = logging.getLogger("JChat")
 SESSION_END_MS = 30_000
 
 
-def _ui(fn) -> None:
-    QTimer.singleShot(0, fn)
+class App(QObject):
+    ui_task = Signal(object)
 
-
-class App:
     def __init__(self, config: dict):
+        super().__init__()
+        self.ui_task.connect(self._run_ui_task)
         self.config = config
         self.store = SQLiteStore(str(PROJECT_ROOT / "jchat.sqlite"))
         self.memory = AgentMemory(
@@ -64,6 +64,10 @@ class App:
     @staticmethod
     def _new_session_id() -> str:
         return datetime.now().strftime("%Y%m%d-%H%M%S")
+
+    def _run_ui_task(self, fn) -> None:
+        """信号桥：worker 线程 emit → 主线程执行（跨线程 UI 更新的正确方式）。"""
+        fn()
 
     # ------------------------------------------------------------ companion wiring
     def attach_companion(self, companion: CompanionWindow) -> None:
@@ -120,7 +124,9 @@ class App:
             ev_seq[0] += 1
             if self.through_hover:
                 return
-            _ui(lambda: card_refs.__setitem__(idx, self.chat_window.add_tool_card(ev.name, "运行中…")))
+            self.ui_task.emit(
+                lambda: card_refs.__setitem__(idx, self.chat_window.add_tool_card(ev.name, "运行中…"))
+            )
 
         turn_ctx = AgentContext(
             config=self.config, llm=self.llm, memory=self.memory, retriever=self.retriever,
@@ -146,7 +152,7 @@ class App:
                         self.chat_window.update_tool_card(card, status, ev.output_preview)
                 self._finish_turn(reply)
 
-        _ui(finish)
+        self.ui_task.emit(finish)
 
     def _record_reply(self, reply: str) -> None:
         self.window_msgs.append({"role": "assistant", "content": reply})
@@ -249,7 +255,7 @@ class App:
         if not text:
             self.schedule_proactive()
             return
-        _ui(lambda: self.companion.show_proactive(text))
+        self.ui_task.emit(lambda: self.companion.show_proactive(text))
         self.schedule_proactive()
 
 
