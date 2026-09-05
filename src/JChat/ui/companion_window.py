@@ -12,7 +12,7 @@ from __future__ import annotations
 import random
 import threading
 
-from PySide6.QtCore import QEvent, QPoint, QRect, QSize, Qt, QTimer, Signal
+from PySide6.QtCore import QPoint, QRect, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QCursor, QMovie
 from PySide6.QtWidgets import (
     QApplication,
@@ -52,9 +52,11 @@ class CompanionWindow(QWidget):
         self.direction = random.choice([-1, 1])
         self.pending_proactive: str | None = None
         self._hover_visible = False
-        self._collapse_timer = QTimer(self)
-        self._collapse_timer.setSingleShot(True)
-        self._collapse_timer.timeout.connect(self._collapse)
+        self._away_since: float | None = None
+        self._poll_timer = QTimer(self)
+        self._poll_timer.setInterval(200)
+        self._poll_timer.timeout.connect(self._poll_hover)
+        self._poll_timer.start()
         self._init_ui()
         self._init_movement()
         self._init_hotkeys()
@@ -97,7 +99,6 @@ class CompanionWindow(QWidget):
         screen = QApplication.primaryScreen().availableGeometry()
         self.move(screen.width() - self.width() - 400, screen.height() - self.height() - 80)
         self._init_menu()
-        self._install_hover_filter()
 
     def _relayout(self) -> None:
         w = self.pet_width + 60
@@ -131,19 +132,22 @@ class CompanionWindow(QWidget):
         self.open_chat_requested.emit()
 
     # ------------------------------------------------------------ hover
-    def _install_hover_filter(self) -> None:
-        for w in (self, self.bubble_host, self.input_host, self.input):
-            w.installEventFilter(self)
+    def _poll_hover(self) -> None:
+        """轮询光标：在窗口内保持/唤出；离开累计 1.5s 收起（打字/子控件不受影响）。"""
+        import time
 
-    def eventFilter(self, obj, event) -> bool:  # noqa: N802
-        if event.type() == QEvent.Enter:
-            self._collapse_timer.stop()
-            if not self.chat_window_open:
+        if self.chat_window_open:
+            return
+        inside = not self._cursor_outside()
+        if inside:
+            self._away_since = None
+            if not self._hover_visible:
                 self._show_hover()
-        elif event.type() == QEvent.Leave:
-            if self._cursor_outside():
-                self._collapse_timer.start(COLLAPSE_MS)
-        return super().eventFilter(obj, event)
+        elif self._hover_visible:
+            if self._away_since is None:
+                self._away_since = time.time()
+            elif time.time() - self._away_since >= COLLAPSE_MS / 1000:
+                self._collapse()
 
     def _cursor_outside(self) -> bool:
         rect = QRect(self.mapToGlobal(QPoint(0, 0)), self.size())
@@ -153,12 +157,13 @@ class CompanionWindow(QWidget):
         if self.chat_window_open:
             return
         self._hover_visible = True
-        self._collapse_timer.stop()
+        self._away_since = None
         self.bubble_host.show()
         self.input_host.show()
 
     def _collapse(self) -> None:
         self._hover_visible = False
+        self._away_since = None
         self.bubble_host.hide()
         self.input_host.hide()
         self.input.clearFocus()
@@ -168,8 +173,6 @@ class CompanionWindow(QWidget):
         self.chat_window_open = open_
         if open_:
             self._collapse()
-        else:
-            self._collapse_timer.stop()
 
     # ------------------------------------------------------------ bubble
     def _set_bubble(self, text: str, tools: list | None = None) -> None:
