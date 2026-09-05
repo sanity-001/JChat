@@ -118,7 +118,10 @@ class CompanionWindow(QWidget):
             QAction("⚙️ 设置", self, triggered=lambda: self.on_settings and self.on_settings())
         )
         self.menu.addSeparator()
-        self.menu.addAction(QAction("退出", self, triggered=self.close))
+        self.menu.addAction(QAction("退出", self, triggered=self._quit_app))
+
+    def _quit_app(self) -> None:
+        QApplication.instance().quit()
 
     def _menu_open_chat(self) -> None:
         self.open_chat_requested.emit()

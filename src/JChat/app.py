@@ -26,7 +26,7 @@ from JChat.queue import LLMQueue
 from JChat.ui.chat_window import ChatWindow
 from JChat.ui.companion_window import CompanionWindow
 from JChat.ui.settings_dialog import SettingsDialog
-from JChat.ui.theme import theme_qss
+from JChat.ui.theme import QSS
 
 logger = logging.getLogger("JChat")
 
@@ -261,7 +261,7 @@ def main() -> None:
 
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
-    app.setStyleSheet(theme_qss(config["ui"]["theme"]))
+    app.setStyleSheet(QSS)
 
     controller = App(config)
     companion = CompanionWindow(config, on_settings=controller.open_settings)

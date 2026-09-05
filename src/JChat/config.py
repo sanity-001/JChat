@@ -68,7 +68,7 @@ DEFAULT_CONFIG: dict = {
         "web_fetch_timeout": 15,
         "web_fetch_max_bytes": 1048576,
     },
-    "ui": {"theme": "light", "font_size": 14},
+    "ui": {"font_size": 14},
 }
 
 EXAMPLE_COMMENTS = {
@@ -77,7 +77,7 @@ EXAMPLE_COMMENTS = {
     "（分钟）；quiet_hours 为免打扰时段。",
     "memory": "记忆与知识库参数（衰减、记忆卡、窗口、抽取阈值）。",
     "tools": "工具执行边界（工作目录、超时、输出截断）。",
-    "ui": "界面主题与字号。",
+    "ui": "界面字号。",
 }
 
 
@@ -147,7 +147,7 @@ def _sanitize(cfg: dict) -> dict:
         "web_fetch_max_bytes": int,
     }.items():
         check("tools", key, expected)
-    for key, expected in {"theme": str, "font_size": int}.items():
+    for key, expected in {"font_size": int}.items():
         check("ui", key, expected)
     return cfg
 
