@@ -1,6 +1,9 @@
 # 隐私配置（勿提交到 git）
 config.private.json
 
+# 本地 opencode 配置（与项目代码无关）
+AGENTS.md
+
 # 前期调研 / 路线图 / 测试（不入库）
 wayfinder/
 research/
