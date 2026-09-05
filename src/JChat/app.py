@@ -57,6 +57,7 @@ class App(QObject):
         self.through_hover = False
         self.session_id = self._new_session_id()
         self.history = ChatHistory(self.store, self.session_id)
+        self._extracted_upto = 0
         self._session_timer = QTimer()
         self._session_timer.setSingleShot(True)
         self._session_timer.timeout.connect(self._on_session_end)
@@ -95,7 +96,7 @@ class App(QObject):
         if self.companion:
             self.companion.set_chat_window_open(False)
         self.chat_window = None
-        self._on_session_end()
+        self._arm_session_end()
 
     # ------------------------------------------------------------ chat turn
     def on_send(self, text: str, via: str = "hover") -> None:
@@ -178,26 +179,22 @@ class App(QObject):
         self._session_timer.start(SESSION_END_MS)
 
     def _on_session_end(self) -> None:
+        """对话流结束（30s 无新消息）：抽取自上次以来新增的轮次；不清空会话（历史保留，重开大窗可见）。"""
         self._session_timer.stop()
-        turns = len(self.window_msgs) // 2
-        if turns > 0 and self.llm:
-            transcript = list(self.history.transcript())
-            if turns >= self.config["memory"]["extraction_min_turns"]:
-                self.queue.submit(2, lambda: self._extract(transcript))
-        self._reset_session()
+        if not self.llm:
+            return
+        transcript = list(self.history.transcript())
+        new_turns = (len(transcript) - self._extracted_upto) // 2
+        if new_turns >= self.config["memory"]["extraction_min_turns"]:
+            new_part = transcript[self._extracted_upto:]
+            self.queue.submit(2, lambda: self._extract(new_part))
+            self._extracted_upto = len(transcript)
 
     def _extract(self, transcript: list[dict]) -> None:
         result = extract_session(transcript, self.memory, self.store, self.llm, cfg=self.config)
         self.memory.consolidate()
         if result:
             logger.info("会话抽取完成：%s", result)
-
-    def _reset_session(self) -> None:
-        self.window_msgs = []
-        self.session_id = self._new_session_id()
-        self.history = ChatHistory(self.store, self.session_id)
-        if self.companion:
-            self.companion.pending_proactive = None
 
     def memory_count(self) -> int:
         return len(self.memory.state())
