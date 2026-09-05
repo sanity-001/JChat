@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>JChat 聊天 UI 原型 — PROTOTYPE（丢弃件）</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #151923; --panel2: #1b2230; --border: #262d3d;
+    --text: #e7ecf5; --text2: #8b94a7; --accent: #4f8cff; --accent2: #7c5cff;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:"Segoe UI","Microsoft YaHei",sans-serif; height:100vh; overflow:hidden; }
+  .variant { display:none; height:100vh; }
+  .variant.active { display:block; }
+
+  /* ============ 底部切换浮条 ============ */
+  #switcher {
+    position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+    display:flex; align-items:center; gap:12px; z-index:999;
+    background:#000; border:1px solid var(--accent); border-radius:999px;
+    padding:8px 16px; font-size:13px; box-shadow:0 6px 24px rgba(79,140,255,.35);
+  }
+  #switcher button {
+    background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; padding:0 6px;
+  }
+  #switcher button:hover { color:var(--accent); }
+  #switcher .label { color:#cbd5e1; min-width:150px; text-align:center; }
+
+  /* ============ 通用元素 ============ */
+  .avatar { border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; }
+  .bubble { border-radius:16px; padding:10px 14px; line-height:1.55; font-size:14px; max-width:68%; }
+  .toolcard { border-radius:12px; font-size:13px; }
+  .toolcard .head { display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 12px; }
+  .toolcard .body { padding:8px 12px; border-top:1px solid var(--border); font-family:Consolas,monospace; white-space:pre-wrap; }
+  .inputrow { display:flex; gap:10px; align-items:flex-end; }
+  .inputrow textarea {
+    flex:1; resize:none; border:1px solid var(--border); border-radius:14px; background:var(--panel2);
+    color:var(--text); padding:12px 14px; font-size:14px; font-family:inherit; outline:none;
+  }
+  .inputrow textarea:focus { border-color:var(--accent); }
+  .send {
+    border:none; border-radius:14px; padding:12px 22px; font-size:14px; color:#fff; cursor:pointer;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); font-weight:600;
+  }
+  .chip { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:4px 10px; font-size:12px; }
+</style>
+</head>
+<body>
+
+<!-- ============ 变体 A：经典双栏（WeChat 式） ============ -->
+<section id="variantA" class="variant active">
+  <div style="display:flex;height:100vh;">
+    <aside style="width:220px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:14px 10px;">
+      <div style="display:flex;align-items:center;gap:10px;padding:6px 8px 18px;">
+        <div class="avatar" style="width:40px;height:40px;background:linear-gradient(135deg,#ff8a5c,#ff4f8b);">小</div>
+        <div><div style="font-weight:700;">小J</div><div style="font-size:11px;color:var(--text2);">你的搭子</div></div>
+      </div>
+      <div class="navitem" style="padding:10px 12px;border-radius:10px;background:rgba(79,140,255,.12);color:var(--accent);font-weight:600;">💬 对话</div>
+      <div class="navitem" style="padding:10px 12px;border-radius:10px;color:var(--text2);">🧩 工具</div>
+      <div class="navitem" style="padding:10px 12px;border-radius:10px;color:var(--text2);">🧠 记忆</div>
+      <div style="margin-top:auto;padding:10px 12px;border-radius:10px;color:var(--text2);">⚙️ 设置</div>
+    </aside>
+    <main style="flex:1;display:flex;flex-direction:column;">
+      <header style="display:flex;align-items:center;gap:10px;padding:14px 22px;border-bottom:1px solid var(--border);background:var(--panel);">
+        <div class="avatar" style="width:36px;height:36px;background:linear-gradient(135deg,#ff8a5c,#ff4f8b);">小</div>
+        <div><div style="font-weight:600;">小J <span class="chip" style="background:rgba(79,140,255,.15);color:var(--accent);">🟢 在线</span></div>
+        <div style="font-size:11px;color:var(--text2);">人格：活泼幽默 · 记忆已载入 3 条</div></div>
+      </header>
+      <div class="msgs" style="flex:1;overflow:auto;padding:22px;display:flex;flex-direction:column;gap:14px;">
+        <div style="display:flex;gap:10px;align-items:flex-end;">
+          <div class="avatar" style="width:36px;height:36px;background:linear-gradient(135deg,#ff8a5c,#ff4f8b);">小</div>
+          <div class="bubble" style="background:var(--panel2);">早呀！今天想让我帮你做点什么？我最近记得你喜欢向量数据库相关的东西～</div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <div class="bubble" style="background:linear-gradient(135deg,#3b82f6,#2563eb);">帮我跑个脚本，统计一下项目的文件数量</div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;">
+          <div class="toolcard" style="width:60%;background:#12161f;border:1px solid var(--border);">
+            <div class="head" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+              <span>🔧</span><b style="color:var(--accent);">run_python</b>
+              <span style="color:var(--text2);font-size:12px;">统计项目文件数 · 耗时 0.4s</span>
+              <span style="margin-left:auto;color:var(--text2);">▾</span>
+            </div>
+            <div class="body" style="display:none;color:#9fe8b0;">42 个文件（.py ×31, .md ×6, .json ×3, 其他 ×2）</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-end;">
+          <div class="avatar" style="width:36px;height:36px;background:linear-gradient(135deg,#ff8a5c,#ff4f8b);">小</div>
+          <div class="bubble" style="background:var(--panel2);">搞定！一共 <b>42 个文件</b>，其中 Python 脚本 31 个。要不要我看看最大的文件是哪个？</div>
+        </div>
+      </div>
+      <div style="padding:16px 22px;border-top:1px solid var(--border);background:var(--panel);">
+        <div class="inputrow"><textarea rows="1" placeholder="和小J说点什么…（Enter 发送）"></textarea><button class="send">发送</button></div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ============ 变体 B：沉浸居中（Linear 式） ============ -->
+<section id="variantB" class="variant">
+  <div style="height:100vh;display:flex;flex-direction:column;">
+    <header style="display:flex;align-items:center;gap:8px;padding:10px 20px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2);">
+      <span style="width:10px;height:10px;border-radius:50%;background:#22c55e;"></span>
+      <b style="color:var(--text);">小J</b><span>· deepseek-v4-flash-vision-exp</span>
+      <span style="margin-left:auto;" class="chip" style="background:rgba(124,92,255,.15);color:#a78bfa;">🧠 记忆已载入 3 条</span>
+    </header>
+    <div class="msgs" style="flex:1;overflow:auto;padding:32px 0;">
+      <div style="max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:18px;">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div class="avatar" style="width:30px;height:30px;background:linear-gradient(135deg,#ff8a5c,#ff4f8b);font-size:13px;">小</div>
+          <div><div style="font-size:14.5px;line-height:1.6;">早呀，今天想让我帮你做点什么？</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:4px;">刚刚</div></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;">
+          <div style="max-width:70%;font-size:14.5px;line-height:1.6;border:1px solid var(--border);border-radius:14px;padding:10px 16px;background:var(--panel2);">
+            帮我跑个脚本，统计项目文件数量
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div class="avatar" style="width:30px;height:30px;background:linear-gradient(135deg,#ff8a5c,#ff4f8b);font-size:13px;">小</div>
+          <div style="flex:1;min-width:0;">
+            <div class="chip" style="background:rgba(79,140,255,.12);color:var(--accent);font-family:Consolas,monospace;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">🔧 run_python · 0.4s ▾</div>
+            <pre style="display:none;background:#10141c;border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-top:8px;font-size:12.5px;color:#9fe8b0;">42 个文件（.py ×31, .md ×6, .json ×3, 其他 ×2）</pre>
+            <div style="font-size:14.5px;line-height:1.6;margin-top:6px;">搞定！一共 42 个文件，其中 Python 脚本 31 个。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:0 0 20px;max-width:720px;margin:0 auto;width:100%;">
+      <div class="inputrow">
+        <textarea rows="1" placeholder="Message 小J…（Enter 发送）"></textarea>
+        <button class="send" style="border-radius:999px;padding:12px 18px;">↑</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 变体 C：搭子互动式（游戏感，聊天附在伙伴旁） ============ -->
+<section id="variantC" class="variant">
+  <div style="height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(1200px 600px at 20% 10%, #1d2340, #0f1115);gap:24px;">
+    <div style="width:260px;text-align:center;">
+      <div class="avatar" style="width:150px;height:150px;margin:0 auto;background:linear-gradient(135deg,#ff8a5c,#ff4f8b,#7c5cff);font-size:60px;border:4px solid rgba(255,255,255,.15);">🐾</div>
+      <div style="font-size:18px;font-weight:700;margin-top:12px;">小J</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px;">活泼 · 爱聊天 · 记性好</div>
+      <div style="margin-top:14px;background:#151923;border:1px solid var(--border);border-radius:16px;padding:10px 14px;font-size:13px;color:#ffd166;">💬 我想你了～要不要聊两句？</div>
+    </div>
+    <div style="width:440px;background:var(--panel);border:1px solid var(--border);border-radius:24px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5);display:flex;flex-direction:column;max-height:82vh;">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border);font-weight:700;display:flex;align-items:center;gap:8px;">
+        💬 对话
+        <span class="chip" style="background:rgba(255,209,102,.12);color:#ffd166;">记得你：偏好向量数据库</span>
+        <span class="chip" style="background:rgba(79,140,255,.12);color:var(--accent);">🧠 3 条记忆</span>
+      </div>
+      <div class="msgs" style="flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;gap:10px;align-items:flex-end;">
+          <div class="avatar" style="width:34px;height:34px;background:linear-gradient(135deg,#ff8a5c,#ff4f8b);">🐾</div>
+          <div class="bubble" style="background:#202843;border-radius:18px 18px 18px 6px;font-size:13.5px;">今天想做点什么？我最近可是记住了你喜欢向量数据库哦～</div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;">
+          <div class="bubble" style="background:linear-gradient(135deg,#4f8cff,#7c5cff);border-radius:18px 18px 6px 18px;font-size:13.5px;">帮我统计项目文件数</div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;">
+          <div class="toolcard" style="width:75%;background:#fff7e0;color:#3a2c00;border:none;">
+            <div class="head" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+              <span>🔧</span><b>run_python 完成啦</b><span style="margin-left:auto;">▾</span>
+            </div>
+            <div class="body" style="display:none;border-color:#e8d9a8;color:#5a4600;">42 个文件（.py ×31, .md ×6, .json ×3）</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-end;">
+          <div class="avatar" style="width:34px;height:34px;background:linear-gradient(135deg,#ff8a5c,#ff4f8b);">🐾</div>
+          <div class="bubble" style="background:#202843;border-radius:18px 18px 18px 6px;font-size:13.5px;">一共 42 个文件～要我帮你看最大的吗？😊</div>
+        </div>
+      </div>
+      <div style="padding:14px;border-top:1px solid var(--border);">
+        <div class="inputrow">
+          <textarea rows="1" placeholder="说点什么…"></textarea>
+          <button class="send" style="border-radius:999px;">发送</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 底部切换浮条 -->
+<div id="switcher">
+  <button id="prev" title="上一方案">◀</button>
+  <span class="label" id="vlabel">A — 经典双栏</span>
+  <button id="next" title="下一方案">▶</button>
+</div>
+
+<script>
+  const VARIANTS = [
+    { key:'A', name:'A — 经典双栏', el:'variantA', label:'经典双栏（WeChat 式：左导航 + 聊天气泡 + 侧边记忆入口）' },
+    { key:'B', name:'B — 沉浸居中', el:'variantB', label:'沉浸居中（Linear 式：无侧栏、居中列、内联工具芯片）' },
+    { key:'C', name:'C — 搭子互动', el:'variantC', label:'搭子互动（游戏感：伙伴形象 + 贴纸气泡 + 便签工具卡）' },
+  ];
+  let idx = 0;
+  function show(i) {
+    idx = (i + VARIANTS.length) % VARIANTS.length;
+    document.querySelectorAll('.variant').forEach(s => s.classList.remove('active'));
+    document.getElementById(VARIANTS[idx].el).classList.add('active');
+    const l = document.getElementById('vlabel');
+    l.textContent = VARIANTS[idx].name;
+    l.title = VARIANTS[idx].label;
+    const u = new URL(location.href); u.searchParams.set('variant', VARIANTS[idx].key);
+    history.replaceState(null, '', u);
+  }
+  document.getElementById('prev').onclick = () => show(idx - 1);
+  document.getElementById('next').onclick = () => show(idx + 1);
+  document.addEventListener('keydown', e => {
+    const t = e.target;
+    if (t && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT')) return;
+    if (e.key === 'ArrowLeft') show(idx - 1);
+    if (e.key === 'ArrowRight') show(idx + 1);
+  });
+  const q = new URLSearchParams(location.search).get('variant') || 'A';
+  show(Math.max(0, VARIANTS.findIndex(v => v.key === q)));
+</script>
+</body>
+</html>

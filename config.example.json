@@ -1,0 +1,60 @@
+{
+  "llm": {
+    "_comment": "LLM 后端（OpenAI 兼容）。api_key 请填到 config.private.json，勿提交。",
+    "base_url": "https://api.deepseek.com",
+    "model": "deepseek-v4-flash-vision-exp",
+    "api_key": "",
+    "proxy": "",
+    "timeout": 100,
+    "max_retry": 3,
+    "temperature": 0.5,
+    "top_p": 1.0,
+    "max_tokens": 2048
+  },
+  "agent": {
+    "max_iterations": 5
+  },
+  "companion": {
+    "_comment": "搭子设置。persona 决定说话风格；icon 为 gif 路径；proactive_* 为主动搭话间隔（分钟）；quiet_hours 为免打扰时段。",
+    "nickname": "小J",
+    "icon": "pet_image/yuansheng/七七.gif",
+    "persona": "一个活泼幽默、善解人意的桌面搭子，说话简洁自然，偶尔开个玩笑。",
+    "random_walk": false,
+    "random_chat": false,
+    "width": 300,
+    "height": 300,
+    "shortcut_chat": "Ctrl+Alt+2",
+    "proactive_min": 10,
+    "proactive_max": 30,
+    "quiet_hours_start": 23,
+    "quiet_hours_end": 8
+  },
+  "memory": {
+    "_comment": "记忆与知识库参数（衰减、记忆卡、窗口、抽取阈值）。",
+    "decay_rate": 0.01,
+    "working_window": 10,
+    "recall_k": 5,
+    "triples_limit": 6,
+    "card_budget_tokens": 800,
+    "card_memory_ratio": 0.6,
+    "window_turns": 20,
+    "window_budget_tokens": 3000,
+    "window_dedup_threshold": 0.6,
+    "memory_dedup_threshold": 0.85,
+    "extraction_min_turns": 8,
+    "importance_threshold": 3
+  },
+  "tools": {
+    "_comment": "工具执行边界（工作目录、超时、输出截断）。",
+    "working_dir": "C:\\Users\\RuanZhilin",
+    "run_timeout": 60,
+    "output_limit_bytes": 16384,
+    "web_fetch_timeout": 15,
+    "web_fetch_max_bytes": 1048576
+  },
+  "ui": {
+    "_comment": "界面主题与字号。",
+    "theme": "dark",
+    "font_size": 14
+  }
+}

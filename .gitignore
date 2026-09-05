@@ -1,0 +1,16 @@
+# 隐私配置（勿提交到 git）
+config.private.json
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# 运行时产物
+*.sqlite
+*.db
+gpt_log/
+chat_log/
+pet_config_private.ini
