@@ -129,7 +129,7 @@ class App(QObject):
             idx = ev_seq[0]
             ev_seq[0] += 1
             if self.companion:
-                self.ui_task.emit(lambda: self.companion.set_expression("sparkle"))
+                self.ui_task.emit(lambda: self.companion.set_expression("surprised"))
             if self.through_hover:
                 return
             self.ui_task.emit(

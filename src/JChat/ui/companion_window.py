@@ -163,11 +163,11 @@ class CompanionWindow(QWidget):
     def _handle_event(self, ev: dict) -> None:
         t = ev.get("type")
         if t == "poke":
-            self.set_expression(random.choice(["happy", "shy", "sparkle"]))
+            self.set_expression(random.choice(["happy", "shy", "surprised"]))
             self._js("bounce()")
             self._js(f"setBubble({json.dumps(random.choice(POKE_TEXT))}, [])")
         elif t == "combo":
-            self.set_expression("heart")
+            self.set_expression("happy")
             self._js("bounce()")
             self._js(f"setBubble({json.dumps(random.choice(COMBO_TEXT))}, [])")
         elif t == "drag":

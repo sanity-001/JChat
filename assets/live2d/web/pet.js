@@ -18,92 +18,79 @@ function post(ev) { window.__events.push(ev); }
 function takeSend() { var s = window.__pendingSend; window.__pendingSend = null; return s; }
 function takeEvents() { var e = window.__events; window.__events = []; return e; }
 
-// ---------------- 表情预设（运行时参数） ----------------
-// 参数方向需可视验证，先按典型值；setExpression 恢复上一预设后再应用新预设。
+// ---------------- 参数写入（数组直写，唯一有效路径） ----------------
+function _idx(id) {
+    var ids = model.internalModel.coreModel._parameterIds || [];
+    return ids.indexOf(id);
+}
+function _setRaw(id, value) {
+    var i = _idx(id);
+    if (i >= 0) model.internalModel.coreModel._parameterValues[i] = value;
+}
+
+// ---------------- 表情预设（运行时参数，数组直写；方向已经验证） ----------------
 var PRESETS = {
     idle: {},
-    happy: { ParamEyeSmile: 1, ParamMouthForm: 1 },
-    thinking: { ParamHandThinking: 1, ParamEyeBallY: 0.8 },
-    shy: { ParamCheek: 1, ParamShy: 1 },
-    heart: { ParamHeartEye: 1 },
-    sparkle: { ParamSparkle: 1 },
-    sad: { ParamTeers: 1, ParamBrowLAngle: -1, ParamMouthForm: -1 },
-    angry: { ParamBrowLAngle: 1, ParamBrowRAngle2: 1, ParamMouthForm: -1 },
+    happy: { ParamMouthOpenY: 0.6, ParamEyeLOpen: 0.8, ParamEyeROpen: 0.8 },
+    thinking: { ParamAngleZ: 12, ParamEyeBallY: 0.6, ParamMouthOpenY: 0 },
+    shy: { ParamCheek: 1 },
     surprised: { ParamJawOpen: 1, ParamEyeLOpen: 1, ParamEyeROpen: 1 },
-    blackface: { ParamBlackFace: 1 },
-    talk: { ParamMouthOpenY: 1 },
+    angry: { ParamBrowLAngle: 1, ParamBrowRAngle2: 1, ParamMouthOpenY: 0.4 },
+    sad: { ParamMouthOpenY: 0.2, ParamEyeLOpen: 0.6, ParamEyeROpen: 0.6, ParamEyeBallY: -0.5, ParamCheek: 0.5 },
+    talk: { ParamMouthOpenY: 0.6 },
 };
 
 function setExpression(name) {
     if (!model || !PRESETS.hasOwnProperty(name)) return;
-    var im = model.internalModel;
-    var core = im.coreModel;
-    var ids = core._parameterIds || [];
-    var defs = core._parameterDefaultValues || [];
-    // 恢复上一个预设涉及的参数
+    var ids = model.internalModel.coreModel._parameterIds || [];
+    var defs = model.internalModel.coreModel._parameterDefaultValues || [];
     var prev = PRESETS[expr] || {};
     Object.keys(prev).forEach(function (id) {
-        var idx = ids.indexOf(id);
-        if (idx >= 0) im.setParameterValueById(id, defs[idx] != null ? defs[idx] : 0);
+        var i = ids.indexOf(id);
+        if (i >= 0) model.internalModel.coreModel._parameterValues[i] = defs[i] != null ? defs[i] : 0;
     });
-    // 应用新预设
     var next = PRESETS[name];
-    Object.keys(next).forEach(function (id) {
-        if (ids.indexOf(id) >= 0) im.setParameterValueById(id, next[id]);
-    });
+    Object.keys(next).forEach(function (id) { _setRaw(id, next[id]); });
     expr = name;
 }
 
 function setTalking(on) {
     talking = !!on;
-    if (!talking) {
-        var im = model && model.internalModel;
-        if (im) im.setParameterValueById('ParamMouthOpenY', 0);
-    }
+    if (!talking) _setRaw('ParamMouthOpenY', 0);
 }
 
 function setGaze(on) { gazeEnabled = !!on; }
 
-// 自动眨眼（参数组无 EyeBlink，手动定时）
-setInterval(function () {
-    if (!model || expr === 'heart' || expr === 'sad') return;
-    var im = model.internalModel;
-    im.setParameterValueById('ParamEyeLOpen', 0);
-    im.setParameterValueById('ParamEyeROpen', 0);
-    setTimeout(function () {
-        im.setParameterValueById('ParamEyeLOpen', 1);
-        im.setParameterValueById('ParamEyeROpen', 1);
-    }, 160);
-}, 4000);
+// 自动眨眼：由 pixi 内置（model3.json EyeBlink 组已填 ParamEyeLOpen/ROpen）
 
-// 说话口型
+// 说话口型（数组直写）
 setInterval(function () {
     if (!model || !talking) return;
-    var im = model.internalModel;
-    im.setParameterValueById('ParamMouthOpenY', Math.random() * 0.8 + 0.2);
+    _setRaw('ParamMouthOpenY', Math.random() * 0.8 + 0.2);
 }, 140);
 
 // 视线跟随（3s 无移动回中）
 document.addEventListener('mousemove', function (e) {
     lastMouseMove = Date.now();
     if (!gazeEnabled || !model) return;
-    var im = model.internalModel;
     var nx = (e.clientX / window.innerWidth - 0.5) * 2;
     var ny = (e.clientY / window.innerHeight - 0.5) * 2;
-    im.setParameterValueById('ParamEyeBallX', Math.max(-1, Math.min(1, nx)));
-    im.setParameterValueById('ParamEyeBallY', Math.max(-1, Math.min(1, -ny)));
+    _setRaw('ParamEyeBallX', Math.max(-1, Math.min(1, nx)));
+    _setRaw('ParamEyeBallY', Math.max(-1, Math.min(1, -ny)));
 });
 setInterval(function () {
     if (!model || !gazeEnabled) return;
     if (Date.now() - lastMouseMove > 3000) {
-        model.internalModel.setParameterValueById('ParamEyeBallX', 0);
-        model.internalModel.setParameterValueById('ParamEyeBallY', 0);
+        _setRaw('ParamEyeBallX', 0);
+        _setRaw('ParamEyeBallY', 0);
     }
 }, 1000);
 
 // ---------------- 点击 / 连击 ----------------
 var lastPoke = 0, pokeCount = 0;
-document.getElementById('canvas').addEventListener('click', function (e) {
+document.addEventListener('click', function (e) {
+    if (e.target && e.target.tagName === 'INPUT') return;
+    if (e.target && e.target.className === 'toolchip') return;
     var region = e.clientY < window.innerHeight * 0.55 ? 'head' : 'body';
     var now = Date.now();
     if (now - lastPoke < 2500) pokeCount++;
@@ -221,6 +208,7 @@ function init() {
         resizeTo: window,
         transparent: true,
         backgroundAlpha: 0,
+        preserveDrawingBuffer: true,
     });
     var modelUrl = new URLSearchParams(location.search).get('model');
     if (!modelUrl) { window.__loadError = 'no model url'; return; }
@@ -249,4 +237,51 @@ window.__modelLoaded = false;
 window.__loadError = '';
 window.__takeSend = takeSend;
 window.__takeEvents = takeEvents;
+
+// ---------------- 探测工具（表情调试用） ----------------
+function probeClean() {
+    if (!model) return;
+    var core = model.internalModel.coreModel;
+    var ids = core._parameterIds || [];
+    var defs = core._parameterDefaultValues || [];
+    for (var i = 0; i < ids.length; i++) {
+        if (defs[i] != null) core._parameterValues[i] = defs[i];
+    }
+}
+function probeSet(pairs) {
+    probeClean();
+    if (!model || !pairs) return;
+    Object.keys(pairs).forEach(function (id) { _setRaw(id, pairs[id]); });
+}
+window.__probeClean = probeClean;
+window.__probeSet = probeSet;
+window.__probeSet2 = function (id, value, method) {
+    var im = model.internalModel;
+    if (method === 'arr') {
+        var ids = im.coreModel._parameterIds || [];
+        var idx = ids.indexOf(id);
+        if (idx >= 0) im.coreModel._parameterValues[idx] = value;
+    } else if (method === 'dict') {
+        if (!im.parameters) im.parameters = {};
+        im.parameters[id] = value;
+    } else {
+        im.setParameterValueById(id, value);
+    }
+    return method + ':' + id + '=' + value;
+};
+window.__probeRead = function (id) {
+    var im = model.internalModel;
+    var arr = null;
+    var ids = im.coreModel._parameterIds || [];
+    var idx = ids.indexOf(id);
+    if (idx >= 0) arr = im.coreModel._parameterValues[idx];
+    var via = 'n/a';
+    try { via = im.getParameterValueById(id); } catch (e) { via = 'err'; }
+    return JSON.stringify({ idx: idx, arr: arr, via: via, dict: (im.parameters || {})[id] });
+};
+window.__snap = function () {
+    var c = document.getElementById('canvas');
+    if (!c) return '';
+    try { return c.toDataURL('image/png'); } catch (e) { return ''; }
+};
 init();
