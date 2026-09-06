@@ -91,7 +91,9 @@ var lastPoke = 0, pokeCount = 0;
 document.addEventListener('click', function (e) {
     if (e.target && e.target.tagName === 'INPUT') return;
     if (e.target && e.target.className === 'toolchip') return;
-    var region = e.clientY < window.innerHeight * 0.55 ? 'head' : 'body';
+    var topZone = 250;
+    var headLimit = topZone + (window.innerHeight - topZone) * 0.35;
+    var region = e.clientY < headLimit ? 'head' : 'body';
     var now = Date.now();
     if (now - lastPoke < 2500) pokeCount++;
     else pokeCount = 1;
@@ -228,9 +230,11 @@ function init() {
 }
 function resizeModel() {
     if (!model) return;
-    var s = window.innerHeight / model.internalModel.originalHeight;
+    var topZone = 250; // 顶部预留气泡区
+    var avail = window.innerHeight - topZone;
+    var s = avail / model.internalModel.originalHeight;
     model.scale.set(s);
-    model.position.set(window.innerWidth * 0.5, window.innerHeight * 0.46);
+    model.position.set(window.innerWidth * 0.5, topZone + avail * 0.5);
 }
 window.addEventListener('resize', resizeModel);
 window.__modelLoaded = false;
