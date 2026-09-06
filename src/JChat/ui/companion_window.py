@@ -144,7 +144,9 @@ class CompanionWindow(QWidget):
 
     def _poll_events(self) -> None:
         self.view.page().runJavaScript(
-            "JSON.stringify({send: window.__takeSend(), events: window.__takeEvents()})",
+            "JSON.stringify((function(){ var s = (window.__takeSend && window.__takeSend()) || null;"
+            " var e = (window.__takeEvents && window.__takeEvents()) || [];"
+            " return {send: s, events: e}; })())",
             self._handle_events,
         )
 

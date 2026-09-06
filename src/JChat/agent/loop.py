@@ -30,6 +30,16 @@ class AgentContext:
     cancel: threading.Event = field(default_factory=threading.Event)
     on_tool_event: Callable[[ToolEvent], None] | None = None
 
+    # 类字典访问（tools.py 按 dict 接口读取 ctx）
+    def get(self, key: str, default=None):
+        return getattr(self, key, default)
+
+    def __getitem__(self, key: str):
+        return getattr(self, key)
+
+    def __contains__(self, key: str) -> bool:
+        return hasattr(self, key)
+
 
 def build_turn_messages(
     persona: str, window: list[dict], user_text: str, ctx: AgentContext, proactive_text: str | None = None
