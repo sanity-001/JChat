@@ -1,0 +1,24 @@
+{
+	"Version": 3,
+	"FileReferences": {
+		"Moc": "vvm.moc3",
+		"Textures": [
+			"vvm.4096/texture_00.png",
+			"vvm.4096/texture_01.png"
+		],
+		"Physics": "vvm.physics3.json",
+		"DisplayInfo": "vvm.cdi3.json"
+	},
+	"Groups": [
+		{
+			"Target": "Parameter",
+			"Name": "EyeBlink",
+			"Ids": []
+		},
+		{
+			"Target": "Parameter",
+			"Name": "LipSync",
+			"Ids": []
+		}
+	]
+}

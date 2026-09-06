@@ -120,9 +120,16 @@ class App(QObject):
         card_refs: dict[int, object] = {}
         ev_seq = [0]
 
+        if self.companion:
+            self.ui_task.emit(
+                lambda: (self.companion.set_expression("thinking"), self.companion.set_gaze(False))
+            )
+
         def on_tool_event(ev) -> None:
             idx = ev_seq[0]
             ev_seq[0] += 1
+            if self.companion:
+                self.ui_task.emit(lambda: self.companion.set_expression("sparkle"))
             if self.through_hover:
                 return
             self.ui_task.emit(
@@ -141,9 +148,11 @@ class App(QObject):
             events = []
 
         def finish() -> None:
+            failed = reply.startswith("（出错")
             if self.through_hover and self.companion:
                 self._record_reply(reply)
                 self.companion.show_reply(reply, events)
+                self._apply_ai_face(failed)
                 self._arm_session_end()
             elif self.chat_window:
                 for i, ev in enumerate(events):
@@ -152,8 +161,26 @@ class App(QObject):
                         status = "完成" if ev.status == "done" else "失败"
                         self.chat_window.update_tool_card(card, status, ev.output_preview)
                 self._finish_turn(reply)
+                if self.companion:
+                    self._apply_ai_face(failed)
 
         self.ui_task.emit(finish)
+
+    def _apply_ai_face(self, failed: bool) -> None:
+        """AI 状态联动：回复后 开心/难过，说话口型 5s，之后回 idle。"""
+        if self.companion is None:
+            return
+        self.companion.set_expression("sad" if failed else "happy")
+        self.companion.set_talking(True)
+
+        def calm() -> None:
+            if self.companion is None:
+                return
+            self.companion.set_talking(False)
+            self.companion.set_expression("idle")
+            self.companion.set_gaze(True)
+
+        QTimer.singleShot(5000, calm)
 
     def _record_reply(self, reply: str) -> None:
         self.window_msgs.append({"role": "assistant", "content": reply})
