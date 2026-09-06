@@ -247,4 +247,6 @@ function resizeModel() {
 window.addEventListener('resize', resizeModel);
 window.__modelLoaded = false;
 window.__loadError = '';
+window.__takeSend = takeSend;
+window.__takeEvents = takeEvents;
 init();
