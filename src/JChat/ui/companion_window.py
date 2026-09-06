@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import random
 import threading
 import urllib.parse
@@ -20,6 +21,8 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QApplication, QInputDialog, QMenu, QVBoxLayout, QWidget
 
 from JChat.config import PROJECT_ROOT
+
+logger = logging.getLogger("JChat.companion")
 
 try:
     import keyboard
@@ -96,6 +99,13 @@ class CompanionWindow(QWidget):
         threading.Thread(target=self._server.serve_forever, daemon=True).start()
         model_url = "/model/" + urllib.parse.quote("vvm.model3.json")
         self.view.load(QUrl(f"http://127.0.0.1:{self._port}/web/index.html?model={model_url}"))
+        QTimer.singleShot(6000, self._check_loaded)
+
+    def _check_loaded(self) -> None:
+        self.view.page().runJavaScript(
+            "window.__modelLoaded ? 'loaded' : ('ERR:' + window.__loadError)",
+            lambda r: logger.info("Live2D %s", r),
+        )
 
     # ------------------------------------------------------------ JS bridge
     def _js(self, code: str) -> None:
