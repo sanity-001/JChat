@@ -50,8 +50,8 @@ var dragDir = null;   // 'left' | 'right' | null（拖动时播跑动动画并�
 var FACE = -1;        // 素材默认朝向：1=朝右。实测反了 → -1（朝左）
 
 function curRow() {
+    if (dragDir) return ROWS.tongue; // 拖动 = 跑动（用户主动意图，最高优先）
     if (oneShot) return ROWS[oneShot.row];
-    if (dragDir) return ROWS.tongue; // 拖动 = 跑动
     if (talking && (expr === 'idle' || expr === 'happy')) return ROWS.talk;
     return ROWS[EXPR_MAP[expr]] || ROWS.idle;
 }
@@ -109,6 +109,7 @@ function setTalking(on) { talking = !!on; }
 function setGaze(on) { /* sprite 无视线参数：no-op（保持 API 兼容） */ }
 
 function playTail() {
+    if (dragging) return; // 拖动期间不插挥手动画
     oneShot = { row: 'wave', frames: ROWS.wave[1] + 1 };
     frameIdx = 0;
 }
@@ -144,15 +145,7 @@ function _petHit(x, y) {
 }
 window.__petHit = _petHit;
 
-canvas.addEventListener('pointerdown', function (e) {
-    var areas = _petHit(e.clientX, e.clientY);
-    if (!areas || areas.length === 0) return;
-    post({ type: 'tap-pos', x: Math.round(e.clientX), y: Math.round(e.clientY) });
-    var region = areas.indexOf('Ahoge') >= 0 ? 'ahoge'
-        : (areas.indexOf('Tail') >= 0 ? 'tail'
-            : (areas.indexOf('Head') >= 0 ? 'head' : 'body'));
-    post({ type: 'poke', region: region });
-});
+canvas.addEventListener('pointerdown', function (e) { /* 点击判定延后到 mouseup（区分拖动） */ });
 
 // 右键菜单 / 拖拽 / 悬停（协议与 pet.js 一致）
 document.addEventListener('contextmenu', function (e) {
@@ -160,9 +153,25 @@ document.addEventListener('contextmenu', function (e) {
     post({ type: 'menu' });
 });
 var dragging = false;
+var pressed = false;
+var pressXY = null;
+var CLICK_MOVE_PX = 6; // 移动超过此距离判定为拖动，不触发点击
+
+function _firePoke(x, y) {
+    var areas = _petHit(x, y);
+    if (!areas || areas.length === 0) return; // 点中透明区：忽略
+    post({ type: 'tap-pos', x: Math.round(x), y: Math.round(y) });
+    var region = areas.indexOf('Ahoge') >= 0 ? 'ahoge'
+        : (areas.indexOf('Tail') >= 0 ? 'tail'
+            : (areas.indexOf('Head') >= 0 ? 'head' : 'body'));
+    post({ type: 'poke', region: region });
+}
+
 document.addEventListener('mousedown', function (e) {
     if (e.target.tagName === 'INPUT') return;
     dragging = true;
+    pressed = true;
+    pressXY = { x: e.clientX, y: e.clientY };
 });
 document.addEventListener('mousemove', function (e) {
     if (dragging) {
@@ -171,7 +180,13 @@ document.addEventListener('mousemove', function (e) {
         else if (e.movementX < -1) dragDir = 'left';
     }
 });
-document.addEventListener('mouseup', function () {
+document.addEventListener('mouseup', function (e) {
+    if (pressed) {
+        pressed = false;
+        var moved = pressXY ? Math.hypot(e.clientX - pressXY.x, e.clientY - pressXY.y) : 999;
+        pressXY = null;
+        if (moved <= CLICK_MOVE_PX) _firePoke(e.clientX, e.clientY); // 没怎么动 = 点击
+    }
     dragging = false;
     dragDir = null; // 松手恢复原表情
 });
