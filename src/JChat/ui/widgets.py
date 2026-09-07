@@ -1,8 +1,9 @@
-"""马卡龙风格自绘组件：回复气泡（MessageBubble）、工具胶囊、便签工具卡、记忆 chips。"""
+"""马卡龙风格自绘组件：回复气泡（MessageBubble）、工具胶囊、便签工具卡、记忆 chips、待机头像。"""
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, QPixmap
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -12,6 +13,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QTextBrowser,
     QVBoxLayout,
+    QWidget,
 )
 
 PALETTE = {
@@ -20,6 +22,64 @@ PALETTE = {
     "capsule": {"bg": "#FFF6C9", "fg": "#8A6D00"},
     "chip": "#5B9BD5",
 }
+
+
+class IdleAvatar(QWidget):
+    """大窗侧栏头像：播放精灵图指定行的帧动画（默认待机行），圆形裁剪。"""
+
+    FRAME_W, FRAME_H = 192, 208
+
+    def __init__(
+        self,
+        size: int = 110,
+        row: int = 0,
+        frames: int = 6,
+        fps: int = 8,
+        sheet_path=None,
+        parent=None,
+    ):
+        super().__init__(parent)
+        self._size = size
+        self._row = row
+        self._frames = max(1, frames)
+        self._idx = 0
+        self._sheet: QImage | None = None
+        if sheet_path:
+            img = QImage(str(sheet_path))
+            if not img.isNull():
+                self._sheet = img
+        self.setFixedSize(size, size)
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._step)
+        self._timer.start(int(1000 / fps))
+
+    def _step(self) -> None:
+        self._idx = (self._idx + 1) % self._frames
+        self.update()
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        path = QPainterPath()
+        path.addRoundedRect(0, 0, self._size, self._size, self._size / 2, self._size / 2)
+        p.setClipPath(path)
+        # 渐变底（马卡龙粉紫）+ 精灵帧
+        from PySide6.QtGui import QLinearGradient
+
+        grad = QLinearGradient(0, 0, self._size, self._size)
+        grad.setColorAt(0, QColor("#FFB6C9"))
+        grad.setColorAt(1, QColor("#C9A9FF"))
+        p.fillRect(self.rect(), grad)
+        if self._sheet is not None:
+            sx = (self._idx % self._frames) * self.FRAME_W
+            src = self._sheet.copy(sx, self._row * self.FRAME_H, self.FRAME_W, self.FRAME_H)
+            scaled = src.scaled(self._size, self._size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            p.drawPixmap(
+                (self._size - scaled.width()) // 2,
+                self._size - scaled.height(),
+                QPixmap.fromImage(scaled),
+            )
+        p.end()
 
 
 class MessageBubble(QFrame):

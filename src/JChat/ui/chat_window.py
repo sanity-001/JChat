@@ -16,7 +16,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from JChat.ui.widgets import MemoryChip, MessageBubble, ToolCard
+from JChat.config import PROJECT_ROOT
+from JChat.ui.widgets import IdleAvatar, MemoryChip, MessageBubble, ToolCard
 
 
 class ChatWindow(QDialog):
@@ -46,13 +47,8 @@ class ChatWindow(QDialog):
         side_layout.setContentsMargins(22, 36, 22, 22)
         side_layout.setAlignment(Qt.AlignTop)
 
-        avatar = QLabel("小")
-        avatar.setFixedSize(110, 110)
-        avatar.setAlignment(Qt.AlignCenter)
-        avatar.setStyleSheet(
-            "background:qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #FFB6C9, stop:1 #C9A9FF);"
-            "color:white; font-size:44px; font-weight:700; border-radius:55px;"
-        )
+        sheet = PROJECT_ROOT / "assets" / "live2d" / "web" / "sprite" / "pets" / "vivimi" / "spritesheet.webp"
+        avatar = IdleAvatar(size=110, row=0, frames=6, sheet_path=sheet)
         side_layout.addWidget(avatar, alignment=Qt.AlignHCenter)
 
         name = QLabel(self.config["companion"]["nickname"])
