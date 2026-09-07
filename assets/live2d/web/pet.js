@@ -132,8 +132,8 @@ function _distToSegment(px, py, x1, y1, x2, y2) {
 }
 function _petHit(x, y) {
     var areas = [];
-    // 呆毛（优先级最高）：头顶发梢胶囊 (250,330)-(243,300) 半径18
-    if (_distToSegment(x, y, 250, 330, 243, 300) <= 18) areas.push('Ahoge');
+    // 呆毛（优先级最高）：头顶发梢横向胶囊 (232,309)-(277,308) 半径18（实测4点）
+    if (_distToSegment(x, y, 232, 309, 277, 308) <= 18) areas.push('Ahoge');
     // 尾巴：长条胶囊 (272,463)-(330,475) 半径18
     if (_distToSegment(x, y, 272, 463, 330, 475) <= 18) areas.push('Tail');
     // 头 / 身
