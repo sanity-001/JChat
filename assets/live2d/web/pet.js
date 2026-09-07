@@ -91,8 +91,8 @@ setInterval(function () {
 // 头：y184-325 → 圆(237,258,r 98)；身：y325-533 → 圆(237,432,r 118)
 function _petHit(x, y) {
     var zones = [
-        { cx: 237, cy: 258, r: 98, name: 'Head' },   // 头
-        { cx: 237, cy: 432, r: 118, name: 'Body' },  // 身/腿
+        { cx: 237, cy: 258, r: 78, name: 'Head' },   // 头（-20%：98→78）
+        { cx: 237, cy: 432, r: 106, name: 'Body' },  // 身/腿（-10%：118→106）
     ];
     var areas = [];
     for (var i = 0; i < zones.length; i++) {
