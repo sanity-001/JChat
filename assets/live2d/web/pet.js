@@ -47,7 +47,7 @@ var _tailTimer = null;
 function playTail() {
     if (!model) return;
     if (_tailTimer) { clearInterval(_tailTimer); _tailTimer = null; }
-    var seq = [0, 1, 0, 1, 0, 1, 0]; // 出-收摆动（Param100=1 收回、=0/负 外伸）
+    var seq = [0, 0.55, 0, 0.55, 0, 0.55, 0]; // 出-收摆动（半幅）
     var i = 0;
     _tailTimer = setInterval(function () {
         if (!model) { clearInterval(_tailTimer); _tailTimer = null; return; }
@@ -123,11 +123,12 @@ setInterval(function () {
 }, 1000);
 
 // ---------------- 点击 / 连击（圆形蒙版近似角色轮廓：头圆+身圆） ----------------
-// 实测校准（10 边缘点拟合）：头心(241,397) r74、身心(246,448) r55
+// 实测校准（10 边缘点拟合）：头心(241,397) r74、身心(246,448) r55、尾(340,462) r52
 function _petHit(x, y) {
     var zones = [
         { cx: 241, cy: 397, r: 74, name: 'Head' },   // 头（边缘点 65~87 拟合）
         { cx: 246, cy: 448, r: 55, name: 'Body' },   // 身/腿（边缘点 42~67 拟合）
+        { cx: 340, cy: 462, r: 52, name: 'Tail' },   // 尾巴（右侧突出部）
     ];
     var areas = [];
     for (var i = 0; i < zones.length; i++) {

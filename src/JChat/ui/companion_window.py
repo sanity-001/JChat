@@ -34,6 +34,7 @@ MODEL_ROOT = PROJECT_ROOT / "assets" / "live2d" / "models" / "vvm"
 
 POKE_TEXT = ["嘿嘿～", "怎么啦？", "戳我干嘛～", "痒痒的！", "今天也要加油哦！"]
 COMBO_TEXT = ["好痒好痒！别戳啦～", "再戳我就生气啦！", "哇！被你戳出爱心了！"]
+TAIL_TEXT = ["别揪尾巴啦～", "尾巴痒痒的！", "嘿嘿，尾巴是我的弱点～"]
 
 
 class _Handler(SimpleHTTPRequestHandler):
@@ -168,10 +169,16 @@ class CompanionWindow(QWidget):
         if t == "tap-pos":
             logger.info("tap (%s, %s)", ev.get("x"), ev.get("y"))
         elif t == "poke":
-            self.set_expression(random.choice(["happy", "shy", "surprised"]))
-            self._js("playTail()")
-            self._js("bounce()")
-            self._js(f"setBubble({json.dumps(random.choice(POKE_TEXT))}, [])")
+            if ev.get("region") == "tail":
+                self.set_expression("happy")
+                self._js("playTail()")
+                self._js("bounce()")
+                self._js(f"setBubble({json.dumps(random.choice(TAIL_TEXT))}, [])")
+            else:
+                self.set_expression(random.choice(["happy", "shy", "surprised"]))
+                self._js("playTail()")
+                self._js("bounce()")
+                self._js(f"setBubble({json.dumps(random.choice(POKE_TEXT))}, [])")
         elif t == "combo":
             self.set_expression("happy")
             self._js("playTail()")
