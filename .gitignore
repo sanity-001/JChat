@@ -15,6 +15,12 @@ opencode.json
 config.json
 pet_image/
 
+# Live2D 后端（初版移出，后续版本回归）
+assets/live2d/models/
+assets/live2d/web/lib/
+assets/live2d/web/index.html
+assets/live2d/web/pet.js
+
 
 # Python
 .venv/

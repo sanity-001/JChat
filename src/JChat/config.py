@@ -37,7 +37,6 @@ DEFAULT_CONFIG: dict = {
         "nickname": "小J",
         "icon": "",
         "persona": "一个活泼幽默、善解人意的桌面搭子，说话简洁自然，偶尔开个玩笑。",
-        "avatar_backend": "sprite",
         "avatar_scale": 0.82,
         "random_walk": False,
         "random_chat": False,

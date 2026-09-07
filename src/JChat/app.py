@@ -51,6 +51,7 @@ class App(QObject):
         self.llm = LLMClient(config) if config["llm"]["api_key"] else None
         self.ctx = AgentContext(config=config, llm=self.llm, memory=self.memory, retriever=self.retriever)
         self.queue = LLMQueue(workers=1)
+        self.game_window = None
         self.window_msgs: list[dict] = []
         self.chat_window: ChatWindow | None = None
         self.companion: CompanionWindow | None = None
@@ -271,6 +272,11 @@ class App(QObject):
     def memory_count(self) -> int:
         return len(self.memory.state())
 
+    def open_game(self, game: str = "五子棋") -> None:
+        from JChat.ui.games import open_game_window
+
+        open_game_window(self, game)
+
     def open_settings(self) -> None:
         if self.companion is None:
             return
@@ -358,7 +364,9 @@ def main() -> None:
     app.setStyleSheet(QSS)
 
     controller = App(config)
-    companion = CompanionWindow(config, on_settings=controller.open_settings)
+    companion = CompanionWindow(
+        config, on_settings=controller.open_settings, on_play_game=controller.open_game
+    )
     controller.attach_companion(companion)
     companion.show()
     controller.schedule_proactive()

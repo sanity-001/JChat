@@ -69,10 +69,11 @@ class CompanionWindow(QWidget):
     open_chat_requested = Signal()
     hover_collapsed = Signal()
 
-    def __init__(self, config: dict, on_settings=None):
+    def __init__(self, config: dict, on_settings=None, on_play_game=None):
         super().__init__()
         self.config = config
         self.on_settings = on_settings
+        self.on_play_game = on_play_game
         self.chat_window_open = False
         self.pending_proactive: str | None = None
         self.direction = random.choice([-1, 1])
@@ -105,6 +106,7 @@ class CompanionWindow(QWidget):
 
         self.menu = QMenu(self)
         self.menu.addAction(QAction("💬 对话详情", self, triggered=self._menu_open_chat))
+        self.menu.addAction(QAction("🎮 一起玩五子棋", self, triggered=self._menu_play_game))
         self.menu.addAction(QAction("✏️ 改昵称", self, triggered=self._change_nickname))
         self.menu.addAction(
             QAction("⚙️ 设置", self, triggered=lambda: self.on_settings and self.on_settings())
@@ -116,17 +118,11 @@ class CompanionWindow(QWidget):
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
         self._port = self._server.server_address[1]
         threading.Thread(target=self._server.serve_forever, daemon=True).start()
-        backend = self.config["companion"].get("avatar_backend", "sprite")
-        if backend == "live2d":
-            page = "index.html"
-            model_url = "/model/" + urllib.parse.quote("vvm.model3.json")
-            self.view.load(QUrl(f"http://127.0.0.1:{self._port}/web/{page}?model={model_url}"))
-        else:  # sprite（默认）：Petdex 精灵图
-            avatar = urllib.parse.quote("/web/sprite/pets/vivimi")
-            scale = self.config["companion"].get("avatar_scale", 0.82)
-            self.view.load(QUrl(
-                f"http://127.0.0.1:{self._port}/web/sprite.html?avatar={avatar}&scale={scale}"
-            ))
+        avatar = urllib.parse.quote("/web/sprite/pets/vivimi")
+        scale = self.config["companion"].get("avatar_scale", 0.82)
+        self.view.load(QUrl(
+            f"http://127.0.0.1:{self._port}/web/sprite.html?avatar={avatar}&scale={scale}"
+        ))
         QTimer.singleShot(6000, self._check_loaded)
 
     def _check_loaded(self) -> None:
@@ -242,6 +238,10 @@ class CompanionWindow(QWidget):
 
     def _menu_open_chat(self) -> None:
         self.open_chat_requested.emit()
+
+    def _menu_play_game(self) -> None:
+        if self.on_play_game:
+            self.on_play_game("五子棋")
 
     def _quit_app(self) -> None:
         QApplication.instance().quit()
