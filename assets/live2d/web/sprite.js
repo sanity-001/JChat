@@ -29,13 +29,14 @@ var ROWS = {
     cheer: [7, 6],      // 握拳欢呼
     smug: [8, 6],       // 得意/眯眼
 };
-// 表情预设 → 状态行（与 pet.js PRESETS 键对齐）
+// 表情预设 → 状态行（与 pet.js PRESETS 键对齐；celebrate 为 sprite 独有：工具完成后欢呼）
 var EXPR_MAP = {
     idle: 'idle', happy: 'happy', thinking: 'smug', shy: 'meh',
     surprised: 'surprised', angry: 'meh', sad: 'surprised',
-    tongue: 'tongue', sleepy: 'smug', talk: 'talk',
+    tongue: 'tongue', sleepy: 'smug', talk: 'talk', celebrate: 'cheer',
 };
 var FPS_MS = 110;
+var SCALE = 0.82;
 
 var canvas = document.getElementById('canvas');
 var ctx = canvas.getContext('2d');
@@ -56,8 +57,9 @@ function layout() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     var topZone = 170; // 顶部预留气泡区（与 Live2D 后端一致）
-    var s = Math.min((window.innerHeight - topZone) * 0.98 / FRAME_H,
-        window.innerWidth * 0.9 / FRAME_W);
+    var base = Math.min((window.innerHeight - topZone) / FRAME_H,
+        window.innerWidth / FRAME_W);
+    var s = base * SCALE;
     rect.w = FRAME_W * s;
     rect.h = FRAME_H * s;
     rect.x = (window.innerWidth - rect.w) / 2;
@@ -233,7 +235,10 @@ function setOverlayVisible(on) {
 // ---------------- 加载 ----------------
 function init() {
     layout();
-    var base = new URLSearchParams(location.search).get('avatar') || '/web/sprite/pets/vivimi';
+    var params = new URLSearchParams(location.search);
+    var base = params.get('avatar') || '/web/sprite/pets/vivimi';
+    SCALE = parseFloat(params.get('scale')) || 0.82;
+    layout();
     fetch(base + '/pet.json')
         .then(function (r) { return r.json(); })
         .then(function (meta) {

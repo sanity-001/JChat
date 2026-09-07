@@ -38,6 +38,7 @@ DEFAULT_CONFIG: dict = {
         "icon": "pet_image/yuansheng/七七.gif",
         "persona": "一个活泼幽默、善解人意的桌面搭子，说话简洁自然，偶尔开个玩笑。",
         "avatar_backend": "sprite",
+        "avatar_scale": 0.82,
         "random_walk": False,
         "random_chat": False,
         "width": 300,
@@ -140,6 +141,7 @@ def _sanitize(cfg: dict) -> dict:
             check(sec, key, expected)
     for key in ("nickname", "icon", "persona", "shortcut_chat", "avatar_backend"):
         check("companion", key, str)
+    check("companion", "avatar_scale", (int, float))
     for key in ("random_walk", "random_chat"):
         check("companion", key, bool)
     for key in ("width", "height", "proactive_min", "proactive_max", "quiet_hours_start",

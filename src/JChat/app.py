@@ -173,10 +173,11 @@ class App(QObject):
 
         def finish() -> None:
             failed = reply.startswith("（出错")
+            tools_used = any(ev.status == "done" for ev in events)
             if self.through_hover and self.companion:
                 self._record_reply(reply)
                 self.companion.show_reply(reply, events)
-                self._apply_ai_face(failed)
+                self._apply_ai_face(failed, tools_used)
                 self._arm_session_end()
             elif self.chat_window:
                 for i, ev in enumerate(events):
@@ -186,15 +187,16 @@ class App(QObject):
                         self.chat_window.update_tool_card(card, status, ev.output_preview)
                 self._finish_turn(reply)
                 if self.companion:
-                    self._apply_ai_face(failed)
+                    self._apply_ai_face(failed, tools_used)
 
         self.ui_task.emit(finish)
 
-    def _apply_ai_face(self, failed: bool) -> None:
-        """AI 状态联动：回复后 开心/难过，说话口型 5s，之后回 idle。"""
+    def _apply_ai_face(self, failed: bool, tools_used: bool = False) -> None:
+        """AI 状态联动：回复后 开心/难过/带工具欢呼，说话 5s，之后回 idle。"""
         if self.companion is None:
             return
-        self.companion.set_expression("sad" if failed else "happy")
+        expr = "sad" if failed else ("celebrate" if tools_used else "happy")
+        self.companion.set_expression(expr)
         self.companion.set_talking(True)
 
         def calm() -> None:

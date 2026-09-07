@@ -32,10 +32,10 @@ except ImportError:  # pragma: no cover
 WEB_ROOT = PROJECT_ROOT / "assets" / "live2d" / "web"
 MODEL_ROOT = PROJECT_ROOT / "assets" / "live2d" / "models" / "vvm"
 
-POKE_TEXT = ["嘿嘿～", "怎么啦？", "戳我干嘛～", "痒痒的！", "今天也要加油哦！"]
-COMBO_TEXT = ["好痒好痒！别戳啦～", "再戳我就生气啦！", "哇！被你戳出爱心了！"]
-TAIL_TEXT = ["别揪尾巴啦～", "尾巴痒痒的！", "嘿嘿，尾巴是我的弱点～"]
-AHOGE_TEXT = ["碰我呆毛干嘛！", "呆毛是敏感区！", "啊！我的呆毛！", "嘿嘿，呆毛会痒～"]
+POKE_TEXT = ["干嘛？想被我大扫除吗？", "哈？有事说事。", "喂，把我当仓鼠了吗？", "别戳了，痒的！", "啧，很闲吗？"]
+COMBO_TEXT = ["嘻嘻嘻，连点三次……想触发什么隐藏机制吗？", "再点我就把你的鼠标塞进炮管里。", "烦死了！……行吧，算你运气好，今天心情好。"]
+TAIL_TEXT = ["啧！尾巴也是能随便碰的吗？", "再拽尾巴就把你炸上天哦，嘻嘻嘻。", "……行吧，碰就碰了，算你运气好。"]
+AHOGE_TEXT = ["哈？呆毛不能碰！", "这是天线，信号会变差的！", "碰坏了你赔啊，很贵的。", "嘻，痒的！再碰给你点烟花看看。"]
 
 
 class _Handler(SimpleHTTPRequestHandler):
@@ -106,7 +106,10 @@ class CompanionWindow(QWidget):
             self.view.load(QUrl(f"http://127.0.0.1:{self._port}/web/{page}?model={model_url}"))
         else:  # sprite（默认）：Petdex 精灵图
             avatar = urllib.parse.quote("/web/sprite/pets/vivimi")
-            self.view.load(QUrl(f"http://127.0.0.1:{self._port}/web/sprite.html?avatar={avatar}"))
+            scale = self.config["companion"].get("avatar_scale", 0.82)
+            self.view.load(QUrl(
+                f"http://127.0.0.1:{self._port}/web/sprite.html?avatar={avatar}&scale={scale}"
+            ))
         QTimer.singleShot(6000, self._check_loaded)
 
     def _check_loaded(self) -> None:
