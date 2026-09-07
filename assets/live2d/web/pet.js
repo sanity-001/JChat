@@ -86,21 +86,23 @@ setInterval(function () {
     }
 }, 1000);
 
-// ---------------- 点击 / 连击 ----------------
+// ---------------- 点击 / 连击（只认伙伴本体：Pixi 模型 pointertap） ----------------
 var lastPoke = 0, pokeCount = 0;
-document.addEventListener('click', function (e) {
-    if (e.target && e.target.tagName === 'INPUT') return;
-    if (e.target && e.target.className === 'toolchip') return;
-    var topZone = 250;
-    var headLimit = topZone + (window.innerHeight - topZone) * 0.35;
-    var region = e.clientY < headLimit ? 'head' : 'body';
-    var now = Date.now();
-    if (now - lastPoke < 2500) pokeCount++;
-    else pokeCount = 1;
-    lastPoke = now;
-    if (pokeCount % 3 === 0) post({ type: 'combo', region: region });
-    else post({ type: 'poke', region: region });
-});
+function _registerPetClick() {
+    if (!model) return;
+    model.interactive = true;
+    model.on('pointertap', function (e) {
+        var topZone = 170;
+        var headLimit = topZone + (window.innerHeight - topZone) * 0.35;
+        var region = e.data.global.y < headLimit ? 'head' : 'body';
+        var now = Date.now();
+        if (now - lastPoke < 2500) pokeCount++;
+        else pokeCount = 1;
+        lastPoke = now;
+        if (pokeCount % 3 === 0) post({ type: 'combo', region: region });
+        else post({ type: 'poke', region: region });
+    });
+}
 
 // 右键菜单事件
 document.addEventListener('contextmenu', function (e) {
@@ -219,8 +221,8 @@ function init() {
             model = m;
             app.stage.addChild(model);
             model.anchor.set(0.5, 0.5);
-            model.interactive = true;
             resizeModel();
+            _registerPetClick();
             window.__modelLoaded = true;
         })
         .catch(function (err) {
@@ -230,7 +232,7 @@ function init() {
 }
 function resizeModel() {
     if (!model) return;
-    var topZone = 250; // 顶部预留气泡区
+    var topZone = 170; // 顶部预留气泡区（含间隙）
     var avail = window.innerHeight - topZone;
     var s = avail / model.internalModel.originalHeight;
     model.scale.set(s);

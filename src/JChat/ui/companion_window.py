@@ -73,7 +73,7 @@ class CompanionWindow(QWidget):
     def _init_ui(self) -> None:
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.SubWindow)
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.resize(480, 640)
+        self.resize(480, 560)
         screen = QApplication.primaryScreen().availableGeometry()
         self.move(screen.width() - self.width() - 400, screen.height() - self.height() - 80)
 
