@@ -210,10 +210,31 @@ document.addEventListener('mouseleave', function () {
 });
 input.addEventListener('focus', function () { hovered = true; if (collapseTimer) clearTimeout(collapseTimer); showOverlay(); });
 
+// 轻量 Markdown（气泡用）
+function escHtml(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+function mdToHtml(t) {
+    var lines = escHtml(t).split("\n"), out = [], inCode = false, code = [];
+    for (var i = 0; i < lines.length; i++) {
+        var s = lines[i].trim();
+        if (/^```/.test(s)) {
+            if (inCode) { out.push('<code class="blk">' + code.join("<br>") + "</code>"); code = []; inCode = false; }
+            else inCode = true;
+            continue;
+        }
+        if (inCode) { code.push(lines[i]); continue; }
+        if (/^#{1,4}\s/.test(s)) { out.push('<b style="color:#9A6AB5">' + s.replace(/^#+\s*/, "") + "</b>"); continue; }
+        if (/^[-*]\s/.test(s)) { out.push("• " + s.slice(2)); continue; }
+        s = s.replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/`([^`]+)`/g, "<code>$1</code>");
+        out.push(s === "" ? "" : s);
+    }
+    if (inCode && code.length) out.push('<code class="blk">' + code.join("<br>") + "</code>");
+    return out.join("<br>");
+}
+
 function setBubble(text, tools) {
     bubble.innerHTML = '';
     var textNode = document.createElement('div');
-    textNode.textContent = text;
+    textNode.innerHTML = mdToHtml(text);
     bubble.appendChild(textNode);
     if (tools && tools.length) {
         var row = document.createElement('div');

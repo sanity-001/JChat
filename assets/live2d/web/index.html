@@ -12,8 +12,12 @@
         #bubbleArea { position: absolute; top: 4px; left: 8px; right: 8px; height: 162px;
             display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
         #bubble { display: none; background: #DFF5E1; color: #3A5A40; border-radius: 20px;
-            padding: 10px 14px; font-size: 14px; line-height: 1.55; max-width: 92%;
-            max-height: 140px; overflow-y: auto; pointer-events: auto; }
+            padding: 10px 14px; font-size: 15px; line-height: 1.65;
+            font-family: "KaiTi", "楷体", "Microsoft YaHei", "Segoe UI", sans-serif;
+            max-width: 92%; max-height: 140px; overflow-y: auto; pointer-events: auto; }
+        #bubble code { background: #FFF6C9; color: #6B5600; border-radius: 4px; padding: 0 4px;
+            font-family: Consolas, monospace; }
+        #bubble code.blk { display: block; padding: 5px 8px; margin: 4px 0; white-space: pre-wrap; }
         #bubble.visible { display: block; }
         #bubble::-webkit-scrollbar { width: 6px; }
         #bubble::-webkit-scrollbar-track { background: transparent; }

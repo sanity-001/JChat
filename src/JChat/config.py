@@ -74,7 +74,7 @@ DEFAULT_CONFIG: dict = {
         "web_fetch_timeout": 15,
         "web_fetch_max_bytes": 1048576,
     },
-    "ui": {"font_size": 14},
+    "ui": {"font_size": 14, "assistant_font": "楷体"},
 }
 
 EXAMPLE_COMMENTS = {

@@ -158,7 +158,13 @@ class ChatWindow(QDialog):
         self.send_btn.setEnabled(not busy)
 
     def _append_bubble(self, role: str, text: str) -> None:
-        bubble = MessageBubble(role, text, font_size=self.config["ui"]["font_size"], max_height=None)
+        bubble = MessageBubble(
+            role,
+            text,
+            font_size=self.config["ui"]["font_size"],
+            max_height=None,
+            assistant_font=self.config["ui"].get("assistant_font", "楷体"),
+        )
         row = QHBoxLayout()
         if role == "user":
             row.addStretch()

@@ -36,6 +36,7 @@ class MessageBubble(QFrame):
         show_full_link: bool = False,
         on_full_link=None,
         font_size: int = 14,
+        assistant_font: str = "楷体",
     ):
         super().__init__(parent)
         role = role if role in PALETTE else "companion"
@@ -50,11 +51,17 @@ class MessageBubble(QFrame):
 
         self.text_browser = QTextBrowser()
         self.text_browser.setFrameShape(QFrame.NoFrame)
+        self.text_browser.setOpenExternalLinks(True)
         self.text_browser.setStyleSheet(
             f"QTextBrowser {{ background: transparent; color: {color['fg']};"
             f" font-size: {font_size}px; border: none; }}"
         )
-        self.text_browser.setPlainText(text)
+        if role == "companion":
+            from JChat.ui.markdown import md_to_html
+
+            self.text_browser.setHtml(md_to_html(text, body_font=assistant_font))
+        else:
+            self.text_browser.setPlainText(text)
         self.text_browser.setFixedWidth(self.TEXT_WIDTH)
         self.text_browser.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self._autosize(max_height)
