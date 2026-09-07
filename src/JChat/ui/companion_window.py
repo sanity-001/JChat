@@ -78,6 +78,10 @@ class CompanionWindow(QWidget):
         self.direction = random.choice([-1, 1])
         self._server = None
         self._port = 0
+        self._expr = "idle"
+        self._flash_timer = QTimer(self)
+        self._flash_timer.setSingleShot(True)
+        self._flash_timer.timeout.connect(self._flash_timeout)
         self._init_ui()
         self._init_server()
         self._init_poll()
@@ -136,7 +140,18 @@ class CompanionWindow(QWidget):
         self.view.page().runJavaScript(code)
 
     def set_expression(self, name: str) -> None:
+        self._expr = name
+        self._flash_timer.stop()  # 外部显式设表情时，取消未决的"闪现归位"
         self._js(f"setExpression({json.dumps(name)})")
+
+    def flash_expression(self, name: str, ms: int = 5000) -> None:
+        """闪现表情 ms 毫秒后归 idle；对话进行中（thinking）不覆盖。"""
+        self.set_expression(name)
+        self._flash_timer.start(ms)
+
+    def _flash_timeout(self) -> None:
+        if self._expr not in ("thinking",):
+            self.set_expression("idle")
 
     def set_talking(self, on: bool) -> None:
         self._js(f"setTalking({str(on).lower()})")
@@ -158,7 +173,7 @@ class CompanionWindow(QWidget):
 
     def show_proactive(self, text: str) -> None:
         self.pending_proactive = text
-        self.set_expression("sleepy")
+        self.flash_expression("sleepy", 8000)
         self._js(f"setBubble({json.dumps(text)}, [])")
 
     def _init_poll(self) -> None:
@@ -198,21 +213,21 @@ class CompanionWindow(QWidget):
                 pass
         elif t == "poke":
             if ev.get("region") == "ahoge":
-                self.set_expression("surprised")
+                self.flash_expression("surprised")
                 self._js("bounce()")
                 self._js(f"setBubble({json.dumps(random.choice(AHOGE_TEXT))}, [])")
             elif ev.get("region") == "tail":
-                self.set_expression("happy")
+                self.flash_expression("happy")
                 self._js("playTail()")
                 self._js("bounce()")
                 self._js(f"setBubble({json.dumps(random.choice(TAIL_TEXT))}, [])")
             else:
-                self.set_expression(random.choice(["happy", "shy", "surprised"]))
+                self.flash_expression(random.choice(["happy", "shy", "surprised"]))
                 self._js("playTail()")
                 self._js("bounce()")
                 self._js(f"setBubble({json.dumps(random.choice(POKE_TEXT))}, [])")
         elif t == "combo":
-            self.set_expression("happy")
+            self.flash_expression("happy")
             self._js("playTail()")
             self._js("bounce()")
             self._js(f"setBubble({json.dumps(random.choice(COMBO_TEXT))}, [])")
