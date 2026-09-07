@@ -35,6 +35,7 @@ MODEL_ROOT = PROJECT_ROOT / "assets" / "live2d" / "models" / "vvm"
 POKE_TEXT = ["嘿嘿～", "怎么啦？", "戳我干嘛～", "痒痒的！", "今天也要加油哦！"]
 COMBO_TEXT = ["好痒好痒！别戳啦～", "再戳我就生气啦！", "哇！被你戳出爱心了！"]
 TAIL_TEXT = ["别揪尾巴啦～", "尾巴痒痒的！", "嘿嘿，尾巴是我的弱点～"]
+AHOGE_TEXT = ["碰我呆毛干嘛！", "呆毛是敏感区！", "啊！我的呆毛！", "嘿嘿，呆毛会痒～"]
 
 
 class _Handler(SimpleHTTPRequestHandler):
@@ -174,7 +175,11 @@ class CompanionWindow(QWidget):
             except OSError:
                 pass
         elif t == "poke":
-            if ev.get("region") == "tail":
+            if ev.get("region") == "ahoge":
+                self.set_expression("surprised")
+                self._js("bounce()")
+                self._js(f"setBubble({json.dumps(random.choice(AHOGE_TEXT))}, [])")
+            elif ev.get("region") == "tail":
                 self.set_expression("happy")
                 self._js("playTail()")
                 self._js("bounce()")

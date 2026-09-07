@@ -132,7 +132,9 @@ function _distToSegment(px, py, x1, y1, x2, y2) {
 }
 function _petHit(x, y) {
     var areas = [];
-    // 尾巴（优先级最高）：长条胶囊 (272,463)-(330,475) 半径18
+    // 呆毛（优先级最高）：头顶发梢胶囊 (250,330)-(243,300) 半径18
+    if (_distToSegment(x, y, 250, 330, 243, 300) <= 18) areas.push('Ahoge');
+    // 尾巴：长条胶囊 (272,463)-(330,475) 半径18
     if (_distToSegment(x, y, 272, 463, 330, 475) <= 18) areas.push('Tail');
     // 头 / 身
     var zones = [
@@ -155,8 +157,9 @@ function _registerPetClick() {
         post({ type: 'tap-pos', x: Math.round(e.data.global.x), y: Math.round(e.data.global.y) });
         var areas = _petHit(e.data.global.x, e.data.global.y);
         if (!areas || areas.length === 0) return; // 点中透明区：忽略
-        var region = areas.indexOf('Tail') >= 0 ? 'tail'
-            : (areas.indexOf('Head') >= 0 ? 'head' : 'body'); // Tail > Head > Body
+        var region = areas.indexOf('Ahoge') >= 0 ? 'ahoge'
+            : (areas.indexOf('Tail') >= 0 ? 'tail'
+                : (areas.indexOf('Head') >= 0 ? 'head' : 'body')); // Ahoge > Tail > Head > Body
         var now = Date.now();
         if (now - lastPoke < 2500) pokeCount++;
         else pokeCount = 1;
