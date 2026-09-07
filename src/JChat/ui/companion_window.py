@@ -168,10 +168,12 @@ class CompanionWindow(QWidget):
             logger.info("tap (%s, %s)", ev.get("x"), ev.get("y"))
         elif t == "poke":
             self.set_expression(random.choice(["happy", "shy", "surprised"]))
+            self._js("playTail()")
             self._js("bounce()")
             self._js(f"setBubble({json.dumps(random.choice(POKE_TEXT))}, [])")
         elif t == "combo":
             self.set_expression("happy")
+            self._js("playTail()")
             self._js("bounce()")
             self._js(f"setBubble({json.dumps(random.choice(COMBO_TEXT))}, [])")
         elif t == "drag":

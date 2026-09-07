@@ -28,17 +28,26 @@ function _setRaw(id, value) {
     if (i >= 0) model.internalModel.coreModel._parameterValues[i] = value;
 }
 
-// ---------------- 表情预设（运行时参数，数组直写；方向已经验证） ----------------
+// ---------------- 表情预设（vtube.json 参数映射校准后） ----------------
 var PRESETS = {
     idle: {},
-    happy: { ParamMouthOpenY: 0.6, ParamEyeLOpen: 0.8, ParamEyeROpen: 0.8 },
+    happy: { ParamMouthOpenY: 0.5, ParamMouthForm: 1, ParamEyeLOpen: 0.8, ParamEyeROpen: 0.8 },
     thinking: { ParamAngleZ: 12, ParamEyeBallY: 0.6, ParamMouthOpenY: 0 },
-    shy: { ParamCheek: 1 },
-    surprised: { ParamJawOpen: 1, ParamEyeLOpen: 1, ParamEyeROpen: 1 },
+    shy: { ParamCheek: 1, ParamMouthForm: 0.5 },
+    surprised: { ParamJawOpen: 1, ParamMouthOpenY: 0.4, ParamEyeLOpen: 1, ParamEyeROpen: 1 },
     angry: { ParamBrowLAngle: 1, ParamBrowRAngle2: 1, ParamMouthOpenY: 0.4 },
     sad: { ParamMouthOpenY: 0.2, ParamEyeLOpen: 0.6, ParamEyeROpen: 0.6, ParamEyeBallY: -0.5, ParamCheek: 0.5 },
-    talk: { ParamMouthOpenY: 0.6 },
+    tongue: { Param158: 1, ParamMouthOpenY: 0.3 },
+    talk: { ParamMouthOpenY: 0.6, ParamMouthForm: 0.3 },
 };
+
+// 情绪尾巴动作（tail.motion3.json，4s 循环）
+function playTail() {
+    try {
+        if (model && model.motion) model.motion('emotion', 0);
+    } catch (e) { /* 静默 */ }
+}
+window.__playTail = playTail;
 
 function setExpression(name) {
     if (!model || !PRESETS.hasOwnProperty(name)) return;
@@ -51,6 +60,7 @@ function setExpression(name) {
     });
     var next = PRESETS[name];
     Object.keys(next).forEach(function (id) { _setRaw(id, next[id]); });
+    if (name === 'happy') playTail();
     expr = name;
 }
 
