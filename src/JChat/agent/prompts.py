@@ -121,9 +121,10 @@ def build_system_prompt(
     memory_card: str,
     extra_rules: str = "",
     life_strip: str = "",
+    nickname: str = "小J",
 ) -> str:
     parts = [
-        f"你是一个桌面搭子，名叫小J。以下是你的性格设定：\n{persona}",
+        f"你是一个桌面搭子，名叫{nickname}。以下是你的性格设定：\n{persona}",
         "",
         "回答要求：使用中文（除非用户使用其他语言）；简洁自然；可以调用工具来完成任务。",
     ]

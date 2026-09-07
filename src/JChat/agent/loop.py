@@ -54,7 +54,11 @@ def build_turn_messages(
     if any(h in user_text for h in ctx.config["companion"].get("recall_hints", [])):
         extra_rules = "（用户在提过去的事。若你不确定细节，先用 recall 工具回忆，再回答。）"
     system = build_system_prompt(
-        ctx.config["companion"]["persona"], memory_card, extra_rules=extra_rules, life_strip=life_strip
+        ctx.config["companion"]["persona"],
+        memory_card,
+        extra_rules=extra_rules,
+        life_strip=life_strip,
+        nickname=ctx.config["companion"]["nickname"],
     )
     messages: list[dict] = [message("system", system)]
     for m in window:
