@@ -58,6 +58,7 @@ class App(QObject):
         self.session_id = self._new_session_id()
         self.history = ChatHistory(self.store, self.session_id)
         self._extracted_upto = 0
+        self._summarized_upto = 0
         self._session_timer = QTimer()
         self._session_timer.setSingleShot(True)
         self._session_timer.timeout.connect(self._on_session_end)
@@ -212,6 +213,25 @@ class App(QObject):
             new_part = transcript[self._extracted_upto:]
             self.queue.submit(2, lambda: self._extract(new_part))
             self._extracted_upto = len(transcript)
+        self._maybe_summarize(transcript)
+
+    def _maybe_summarize(self, transcript: list[dict]) -> None:
+        """摘要带（Alife 在场感的轻量版）：只压已滑出滚动窗口的轮次块，≥summary_min_turns 触发。"""
+        if not self.llm:
+            return
+        window_limit = self.config["memory"]["window_turns"] * 2
+        slid_out_end = max(0, len(transcript) - window_limit)
+        block = transcript[self._summarized_upto:slid_out_end]
+        if len(block) // 2 >= self.config["memory"]["summary_min_turns"]:
+            self.queue.submit(2, lambda: self._summarize_job(list(block)))
+            self._summarized_upto = slid_out_end
+
+    def _summarize_job(self, block: list[dict]) -> None:
+        from JChat.agent.extractor import merge_old_summaries, summarize_block
+
+        if summarize_block(block, self.memory, self.llm):
+            logger.info("生活摘要已生成（覆盖 %d 条消息）", len(block))
+            merge_old_summaries(self.memory, self.llm, self.config["memory"]["summary_max_count"])
 
     # ------------------------------------------------------------ session lifecycle
     def _arm_session_end(self) -> None:

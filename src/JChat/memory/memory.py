@@ -42,11 +42,25 @@ class AgentMemory:
             self.staging.pop(0)
         return memory_id
 
+    def remember_summary(self, content: str, importance: float = 8.0) -> str:
+        """常驻'近期生活摘要'（scope=summary）：注入走摘要带，不参与 recall 检索。"""
+        memory_id = uuid.uuid4().hex
+        self.store.save_memory(
+            memory_id=memory_id,
+            scope="summary",
+            content=content,
+            entities=[],
+            importance=importance,
+        )
+        return memory_id
+
     # ------------------------------------------------------------------- read
     def recall(self, query: str, k: int = 5) -> list[dict]:
         """Rank memories by token-overlap with the query + entity link boost + recency."""
         q_tokens = set(tokenize(query))
-        candidates = [self._enrich(m) for m in self.store.list_memories()]
+        candidates = [
+            self._enrich(m) for m in self.store.list_memories() if m["scope"] != "summary"
+        ]
         scored: list[dict] = []
         q_entities = _entity_tokens(query)
         for m in candidates:
@@ -67,6 +81,12 @@ class AgentMemory:
 
     def state(self, scope: str | None = None) -> list[dict]:
         return [self._enrich(m) for m in self.store.list_memories(scope)]
+
+    def list_summaries(self) -> list[dict]:
+        """常驻摘要带条目（按时间升序：最老在前）。"""
+        rows = [self._enrich(m) for m in self.store.list_memories("summary")]
+        rows.sort(key=lambda m: m["created_at"])
+        return rows
 
     # -------------------------------------------------------------- lifecycle
     def decay(self, now: float | None = None) -> None:

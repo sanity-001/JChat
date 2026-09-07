@@ -36,6 +36,7 @@ class ChatHistory:
     def transcript(self) -> list[dict]:
         with self.store._lock:
             rows = self.conn.execute(
-                "SELECT role, content FROM chats WHERE session_id=? ORDER BY id", (self.session_id,)
+                "SELECT role, content, created_at FROM chats WHERE session_id=? ORDER BY id",
+                (self.session_id,),
             ).fetchall()
-        return [{"role": r[0], "content": r[1]} for r in rows]
+        return [{"role": r[0], "content": r[1], "created_at": r[2]} for r in rows]

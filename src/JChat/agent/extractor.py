@@ -36,6 +36,15 @@ _USER = """对话记录：
 
 返回 JSON。"""
 
+_SUMMARY_SYSTEM = """你是用户的桌面搭子小J。一段刚过去的日子即将离开你的短期注意范围，
+请以你自己的第一人称视角、带感情但精简（150字以内）地写一段这段时期的生活轨迹：
+发生了什么事、用户的重要动向、你印象最深的时刻。按时间顺序叙述，不用分点。
+不要加日期头（系统会加）。直接输出纯摘要内容。"""
+
+_SUMMARY_MERGE_SYSTEM = """你是用户的桌面搭子小J。下面是两段更早期的、按时间先后排列的生活轨迹摘要。
+请把它们合并成一段更精简（150字以内）的第一人称轨迹摘要：保留最重要的事件与用户动向，
+舍弃细节。不要加日期头（系统会加）。直接输出纯摘要内容。"""
+
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
 
 
@@ -127,3 +136,75 @@ def _parse_json(raw: str) -> dict:
         if m:
             return json.loads(m.group(0))
         raise
+
+
+def _chat(raw: str, llm, system: str) -> str:
+    resp = llm.chat(
+        [
+            {"role": "system", "content": system},
+            {"role": "user", "content": raw[:24000]},
+        ],
+        max_tokens=512,
+    )
+    return (resp["choices"][0]["message"]["content"] or "").strip()
+
+
+def _range_label(start_ts: float, end_ts: float) -> str:
+    s = time.strftime("%m月%d日", time.localtime(start_ts))
+    e = time.strftime("%m月%d日", time.localtime(end_ts))
+    return s if s == e else f"{s}-{e}"
+
+
+def summarize_block(
+    transcript: list[dict],
+    memory: AgentMemory,
+    llm,
+) -> str | None:
+    """把一段已滑出滚动窗口的对话压成一条常驻生活摘要（scope=summary）。
+
+    借鉴 Alife：第一人称、带感情、带日期范围；原文已在 chats 表永久保存。
+    失败返回 None（下次继续重试，原文不丢）。
+    """
+    if llm is None or not transcript:
+        return None
+    text = "\n".join(f"{m['role']}: {m['content']}" for m in transcript)
+    try:
+        summary = _chat(text, llm, _SUMMARY_SYSTEM)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("生活摘要失败：%s", e)
+        return None
+    if len(summary) < 20:
+        logger.warning("生活摘要过短，丢弃：%r", summary[:50])
+        return None
+    existing = memory.list_summaries()
+    if existing and _overlap(
+        set(tokenize(existing[-1]["content"])), set(tokenize(summary))
+    ) >= 0.6:
+        logger.info("生活摘要与上一条高度相似，跳过")
+        return None
+    label = _range_label(transcript[0]["created_at"], transcript[-1]["created_at"])
+    content = f"[{label}] {summary}"
+    memory.remember_summary(content)
+    return content
+
+
+def merge_old_summaries(memory: AgentMemory, llm, max_count: int) -> bool:
+    """摘要超过 max_count 时，把最老两条合并成一条更粗的轨迹（两级封顶）。"""
+    if llm is None:
+        return False
+    summaries = memory.list_summaries()
+    if len(summaries) <= max_count:
+        return False
+    old1, old2 = summaries[0], summaries[1]
+    try:
+        merged = _chat(
+            f"轨迹一：{old1['content']}\n\n轨迹二：{old2['content']}", llm, _SUMMARY_MERGE_SYSTEM
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("摘要合并失败：%s", e)
+        return False
+    if len(merged) < 20:
+        return False
+    memory.store.delete_memories([old1["memory_id"], old2["memory_id"]])
+    memory.remember_summary(f"[更早期] {merged}")
+    return True

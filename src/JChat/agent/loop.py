@@ -8,7 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from JChat.agent import tools as tool_mod
-from JChat.agent.prompts import build_memory_card, build_system_prompt
+from JChat.agent.prompts import build_life_strip, build_memory_card, build_system_prompt
 from JChat.llm.client import LLMClient, message
 
 
@@ -44,12 +44,18 @@ class AgentContext:
 def build_turn_messages(
     persona: str, window: list[dict], user_text: str, ctx: AgentContext, proactive_text: str | None = None
 ) -> tuple[list[dict], str]:
-    """组装本轮 messages：system(persona+记忆卡) + 窗口 + (主动搭话上下文) + 当前用户消息。"""
+    """组装本轮 messages：system(persona+轨迹带+记忆卡) + 窗口 + (主动搭话上下文) + 当前用户消息。"""
     window_text = " ".join(
         f"{m['role']}: {m['content']}" for m in window[-ctx.config["memory"]["window_turns"] * 2 :]
     )
     memory_card = build_memory_card(user_text, ctx.memory, ctx.retriever, window_text, ctx.config)
-    system = build_system_prompt(ctx.config["companion"]["persona"], memory_card)
+    life_strip = build_life_strip(ctx.memory, ctx.config["memory"]["summary_max_count"])
+    extra_rules = ""
+    if any(h in user_text for h in ctx.config["companion"].get("recall_hints", [])):
+        extra_rules = "（用户在提过去的事。若你不确定细节，先用 recall 工具回忆，再回答。）"
+    system = build_system_prompt(
+        ctx.config["companion"]["persona"], memory_card, extra_rules=extra_rules, life_strip=life_strip
+    )
     messages: list[dict] = [message("system", system)]
     for m in window:
         messages.append(message(m["role"], m["content"]))

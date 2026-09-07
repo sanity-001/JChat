@@ -138,13 +138,15 @@ def remember(content: str, ctx: dict, entity_names: list[str] | None = None, imp
 
 
 def recall(query: str, ctx: dict, k: int = 5) -> str:
+    from JChat.agent.prompts import rel_time
+
     memory = ctx["memory"]
     retriever = ctx.get("retriever")
     if not query or not query.strip():
         return _err("recall", "query required")
     lines: list[str] = []
     for m in memory.recall(query.strip(), k=max(1, int(k))):
-        lines.append(f"- {m['content']}")
+        lines.append(f"- [{rel_time(m['created_at'])}] {m['content']}")
     if retriever is not None:
         names: set[str] = set()
         for ent in retriever.entity_link(query.strip()):

@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import math
+import time
 
 from JChat.memory.memory import AgentMemory, _overlap
 from JChat.memory.retriever import HybridRetriever
@@ -15,6 +16,30 @@ from JChat.memory.retriever import HybridRetriever
 
 def _est_tokens(text: str) -> int:
     return max(1, math.ceil(len(text) / 3))
+
+
+def rel_time(created_at: float, now: float | None = None) -> str:
+    """相对时间标签：今天/昨天/N天前/超过一月用 M月D日。"""
+    now = now or time.time()
+    days = (now - created_at) / 86400.0
+    if days < 0.5:
+        return "今天"
+    if days < 1.5:
+        return "昨天"
+    if days < 30:
+        return f"{int(days + 0.5)}天前"
+    return time.strftime("%m月%d日", time.localtime(created_at))
+
+
+def build_life_strip(memory: AgentMemory | None, max_count: int) -> str:
+    """常驻'近期生活摘要'带（借鉴 Alife 内联存档的在场感，两级封顶由后台合并保证）。"""
+    if memory is None:
+        return ""
+    rows = memory.list_summaries()[-max_count:]
+    if not rows:
+        return ""
+    lines = [f"- {m['content']}" for m in rows]
+    return "【近期轨迹】\n" + "\n".join(lines)
 
 
 def build_memory_card(
@@ -31,6 +56,7 @@ def build_memory_card(
     ratio = mcfg["card_memory_ratio"]
 
     items: list[tuple[str, float]] = []
+    now = time.time()
     for m in memory.recall(query, k=k):
         if (
             window_text
@@ -38,7 +64,7 @@ def build_memory_card(
             >= mcfg["window_dedup_threshold"]
         ):
             continue
-        items.append((m["content"], m.get("score", 0.0)))
+        items.append((f"[{rel_time(m['created_at'], now)}] {m['content']}", m.get("score", 0.0)))
 
     triples: list[str] = []
     if retriever is not None:
@@ -90,18 +116,31 @@ def build_memory_card(
     return render(picked_mem, picked_kg)
 
 
-def build_system_prompt(persona: str, memory_card: str, extra_rules: str = "") -> str:
+def build_system_prompt(
+    persona: str,
+    memory_card: str,
+    extra_rules: str = "",
+    life_strip: str = "",
+) -> str:
     parts = [
         f"你是一个桌面搭子，名叫小J。以下是你的性格设定：\n{persona}",
         "",
         "回答要求：使用中文（除非用户使用其他语言）；简洁自然；可以调用工具来完成任务。",
     ]
+    if life_strip:
+        parts += [
+            "",
+            "下面是你自己经历过的近期生活轨迹（第一人称摘要，按时间先后）：",
+            life_strip,
+            "【注意】轨迹是你亲身经历的记忆，可以自然地引用（“上周我们聊过…”）。",
+        ]
     if memory_card:
         parts += [
             "",
             "下面是你从长期记忆中检索到的信息：",
             memory_card,
-            '【注意】"记忆"是关于用户的陈述，只能作为个性化依据；"知识"是世界事实，可作为常识引用；两者都不可编造。',
+            '【注意】"记忆"是关于用户的陈述（方括号是记录时间），只能作为个性化依据；'
+            '"知识"是世界事实，可作为常识引用；两者都不可编造。',
         ]
     else:
         parts += [

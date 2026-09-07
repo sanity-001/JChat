@@ -47,6 +47,7 @@ DEFAULT_CONFIG: dict = {
         "quiet_hours_start": 23,
         "quiet_hours_end": 8,
         "reply_ttl_seconds": 30,
+        "recall_hints": ["还记得", "上次", "之前", "那天", "我们聊过", "以前", "上次说"],
     },
     "memory": {
         "decay_rate": 0.01,
@@ -60,6 +61,8 @@ DEFAULT_CONFIG: dict = {
         "window_dedup_threshold": 0.6,
         "memory_dedup_threshold": 0.85,
         "extraction_min_turns": 4,
+        "summary_min_turns": 6,
+        "summary_max_count": 4,
         "importance_threshold": 3,
     },
     "tools": {
@@ -130,7 +133,7 @@ def _sanitize(cfg: dict) -> dict:
     for sec, keys in {
         "llm": (str, str, str, str, int, int, NUM, NUM, int),
         "agent": (int,),
-        "memory": (NUM, int, int, int, int, NUM, int, int, NUM, NUM, int, NUM),
+        "memory": (NUM, int, int, int, int, NUM, int, int, NUM, NUM, int, int, int, NUM),
     }.items():
         for key, expected in zip(DEFAULT_CONFIG[sec], keys, strict=True):
             check(sec, key, expected)
