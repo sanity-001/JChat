@@ -57,8 +57,22 @@ class App(QObject):
         self.through_hover = False
         self.session_id = self._new_session_id()
         self.history = ChatHistory(self.store, self.session_id)
-        self._extracted_upto = 0
-        self._summarized_upto = 0
+        from JChat.memory.pipeline import RollingStage
+
+        self._pipeline = [
+            RollingStage(
+                "extract",
+                "extraction_min_turns",
+                lambda app, t: len(t),
+                self._run_extract_stage,
+            ),
+            RollingStage(
+                "summary",
+                "summary_min_turns",
+                lambda app, t: max(0, len(t) - app.config["memory"]["window_turns"] * 2),
+                self._run_summary_stage,
+            ),
+        ]
         self._session_timer = QTimer()
         self._session_timer.setSingleShot(True)
         self._session_timer.timeout.connect(self._on_session_end)
@@ -72,9 +86,18 @@ class App(QObject):
         fn()
 
     # ------------------------------------------------------------ companion wiring
+    def attach_input(self, source, via: str) -> None:
+        """开源接缝②（docs/system.md §6）：输入源统一接口。
+
+        任何携带 `send_requested = Signal(str)` 的 QObject 都是输入源
+        （悬停/大窗是现有实现；未来 QQ/语音等新输入源接入 = 一个信号 + 一行 attach）。
+        回复路由由 on_send 的 via 决定。
+        """
+        source.send_requested.connect(lambda t: self.on_send(t, via=via))
+
     def attach_companion(self, companion: CompanionWindow) -> None:
         self.companion = companion
-        companion.send_requested.connect(lambda t: self.on_send(t, via="hover"))
+        self.attach_input(companion, via="hover")
         companion.open_chat_requested.connect(self.open_big_window)
         companion.hover_collapsed.connect(self._arm_session_end)
 
@@ -85,7 +108,7 @@ class App(QObject):
             self.chat_window.raise_()
             return
         win = ChatWindow(self.config, memory_count_fn=self.memory_count, parent=None)
-        win.send_requested.connect(lambda t: self.on_send(t, via="big"))
+        self.attach_input(win, via="big")
         win.closed.connect(self.on_big_window_close)
         win.load_history(self.window_msgs)
         win.show()
@@ -201,52 +224,40 @@ class App(QObject):
         limit = self.config["memory"]["window_turns"] * 2
         if len(self.window_msgs) > limit:
             self.window_msgs = self.window_msgs[-limit:]
-        self._maybe_rolling_extract()
+        self._run_memory_pipeline()
 
-    def _maybe_rolling_extract(self) -> None:
-        """滚动抽取（借鉴 Alife：每轮回复后检查，不等会话结束）：新增轮次达标即后台抽取。"""
+    def _run_memory_pipeline(self) -> None:
+        """每轮回复后驱动记忆管线（借鉴 Alife 的机械自动化，不等会话结束）。"""
         if not self.llm:
             return
         transcript = list(self.history.transcript())
-        new_turns = (len(transcript) - self._extracted_upto) // 2
-        if new_turns >= self.config["memory"]["extraction_min_turns"]:
-            new_part = transcript[self._extracted_upto:]
-            self.queue.submit(2, lambda: self._extract(new_part))
-            self._extracted_upto = len(transcript)
-        self._maybe_summarize(transcript)
-
-    def _maybe_summarize(self, transcript: list[dict]) -> None:
-        """摘要带（Alife 在场感的轻量版）：只压已滑出滚动窗口的轮次块，≥summary_min_turns 触发。"""
-        if not self.llm:
-            return
-        window_limit = self.config["memory"]["window_turns"] * 2
-        slid_out_end = max(0, len(transcript) - window_limit)
-        block = transcript[self._summarized_upto:slid_out_end]
-        if len(block) // 2 >= self.config["memory"]["summary_min_turns"]:
-            self.queue.submit(2, lambda: self._summarize_job(list(block)))
-            self._summarized_upto = slid_out_end
-
-    def _summarize_job(self, block: list[dict]) -> None:
-        from JChat.agent.extractor import merge_old_summaries, summarize_block
-
-        if summarize_block(block, self.memory, self.llm):
-            logger.info("生活摘要已生成（覆盖 %d 条消息）", len(block))
-            merge_old_summaries(self.memory, self.llm, self.config["memory"]["summary_max_count"])
+        for stage in self._pipeline:
+            stage.maybe_submit(self, transcript)
 
     # ------------------------------------------------------------ session lifecycle
     def _arm_session_end(self) -> None:
         self._session_timer.start(SESSION_END_MS)
 
     def _on_session_end(self) -> None:
-        """对话流结束（30s 无新消息）：兜底抽取自上次以来新增的轮次；不清空会话（历史保留，重开大窗可见）。"""
+        """对话流结束（30s 无新消息）：兜底驱动一次记忆管线；不清空会话（历史保留，重开大窗可见）。"""
         self._session_timer.stop()
-        self._maybe_rolling_extract()
+        self._run_memory_pipeline()
 
-    def _extract(self, transcript: list[dict]) -> None:
-        result = extract_session(transcript, self.memory, self.store, self.llm, cfg=self.config)
+    # ------------------------------------------------------------ pipeline stages
+    def _run_extract_stage(self, block: list[dict]) -> None:
+        """阶段 extract：facts(第一人称)+三元组落库，随后 consolidate。"""
+        result = extract_session(block, self.memory, self.store, self.llm, cfg=self.config)
         self.memory.consolidate()
         if result:
             logger.info("会话抽取完成：%s", result)
+
+    def _run_summary_stage(self, block: list[dict]) -> None:
+        """阶段 summary：滑出窗口的块 → 生活摘要带，超出容量则合并最老两条。"""
+        from JChat.agent.extractor import merge_old_summaries, summarize_block
+
+        if summarize_block(block, self.memory, self.llm):
+            logger.info("生活摘要已生成（覆盖 %d 条消息）", len(block))
+            merge_old_summaries(self.memory, self.llm, self.config["memory"]["summary_max_count"])
 
     def memory_count(self) -> int:
         return len(self.memory.state())
