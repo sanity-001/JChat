@@ -22,3 +22,5 @@ __pycache__/
 gpt_log/
 chat_log/
 pet_config_private.ini
+
+tap_coords.log
