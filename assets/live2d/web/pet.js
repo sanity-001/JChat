@@ -38,14 +38,30 @@ var PRESETS = {
     angry: { ParamBrowLAngle: 1, ParamBrowRAngle2: 1, ParamMouthOpenY: 0.4 },
     sad: { ParamMouthOpenY: 0.2, ParamEyeLOpen: 0.6, ParamEyeROpen: 0.6, ParamEyeBallY: -0.5, ParamCheek: 0.5 },
     tongue: { Param158: 1, ParamMouthOpenY: 0.3 },
+    sleepy: { ParamEyeLOpen: 0.45, ParamEyeROpen: 0.45, ParamMouthForm: 0.2 },
     talk: { ParamMouthOpenY: 0.6, ParamMouthForm: 0.3 },
 };
 
-// 情绪尾巴动作（tail.motion3.json，4s 循环）
+// 情绪尾巴：motion 管理器在此核心缺失 API 无法生效，改为数组直写实现"伸出-收回"摇尾节奏
+var _tailTimer = null;
 function playTail() {
-    try {
-        if (model && model.motion) model.motion('emotion', 0);
-    } catch (e) { /* 静默 */ }
+    if (!model) return;
+    if (_tailTimer) { clearInterval(_tailTimer); _tailTimer = null; }
+    var seq = [0, 1, 0, 1, 0, 1, 0]; // 出-收摆动（Param100=1 收回、=0/负 外伸）
+    var i = 0;
+    _tailTimer = setInterval(function () {
+        if (!model) { clearInterval(_tailTimer); _tailTimer = null; return; }
+        var v = seq[i % seq.length];
+        _setRaw('Param100', v);
+        _setRaw('Param90', -v);
+        i++;
+        if (i >= seq.length * 2) {
+            clearInterval(_tailTimer);
+            _tailTimer = null;
+            _setRaw('Param100', 0);
+            _setRaw('Param90', 0);
+        }
+    }, 350);
 }
 window.__playTail = playTail;
 
@@ -71,7 +87,17 @@ function setTalking(on) {
 
 function setGaze(on) { gazeEnabled = !!on; }
 
-// 自动眨眼：由 pixi 内置（model3.json EyeBlink 组已填 ParamEyeLOpen/ROpen）
+// 自动眨眼（手动控制：闭眼 300ms，间隔 4s）
+var BLINK_CLOSE_MS = 300;
+setInterval(function () {
+    if (!model || expr === 'sad') return;
+    _setRaw('ParamEyeLOpen', 0);
+    _setRaw('ParamEyeROpen', 0);
+    setTimeout(function () {
+        _setRaw('ParamEyeLOpen', 1);
+        _setRaw('ParamEyeROpen', 1);
+    }, BLINK_CLOSE_MS);
+}, 4000);
 
 // 说话口型（数组直写）
 setInterval(function () {

@@ -134,6 +134,7 @@ class CompanionWindow(QWidget):
 
     def show_proactive(self, text: str) -> None:
         self.pending_proactive = text
+        self.set_expression("sleepy")
         self._js(f"setBubble({json.dumps(text)}, [])")
 
     def _init_poll(self) -> None:
