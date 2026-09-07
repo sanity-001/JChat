@@ -61,7 +61,7 @@ function playTail() {
             _setRaw('Param100', 0);
             _setRaw('Param90', 0);
         }
-    }, 350);
+    }, 550);
 }
 window.__playTail = playTail;
 
