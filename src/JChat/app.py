@@ -100,6 +100,12 @@ class App(QObject):
         self.attach_input(companion, via="hover")
         companion.open_chat_requested.connect(self.open_big_window)
         companion.hover_collapsed.connect(self._arm_session_end)
+        # 启动苏醒问候（借鉴 Alife"第一次苏醒，向用户打个招呼"），受 random_chat 开关约束
+        if self.llm is not None and self.config["companion"].get("random_chat"):
+            QTimer.singleShot(
+                8000,
+                lambda: self._proactive_tick("（程序刚启动，你的第一次苏醒：向用户打个招呼，简短自然）"),
+            )
 
     # ------------------------------------------------------------ big window
     def open_big_window(self) -> None:
@@ -163,6 +169,7 @@ class App(QObject):
         turn_ctx = AgentContext(
             config=self.config, llm=self.llm, memory=self.memory, retriever=self.retriever,
             cancel=self.ctx.cancel, on_tool_event=on_tool_event,
+            scheduler=self._schedule_event,
         )
         try:
             reply, events = run_turn(text, self.window_msgs, turn_ctx, proactive_text=proactive)
@@ -278,13 +285,31 @@ class App(QObject):
         interval = random.randint(
             self.config["companion"]["proactive_min"], self.config["companion"]["proactive_max"]
         ) * 60 * 1000
-        QTimer.singleShot(interval, self._proactive_tick)
+        QTimer.singleShot(interval, lambda: self._proactive_tick())
 
-    def _proactive_tick(self) -> None:
+    # ------------------------------------------------------------ schedule
+    # （AI 定时报点，借鉴 Alife SystemEvent）
+
+    def _schedule_event(self, iso: str, remark: str) -> str:
+        """worker 线程调用：解析时间并经 ui_task 转 GUI 线程创建 QTimer。"""
+        try:
+            dt = datetime.fromisoformat(iso)
+        except ValueError:
+            return "[schedule] [Error] 时间格式需为 ISO-8601，如 2026-09-07T22:30:00"
+        delay_ms = int((dt - datetime.now()).total_seconds() * 1000)
+        if delay_ms > 7 * 86400 * 1000:
+            return "[schedule] [Error] 最多只支持 7 天内的报点"
+        self.ui_task.emit(lambda: self._add_scheduled(max(0, delay_ms), remark))
+        return f"已设定时报点 {dt:%m月%d日 %H:%M}（{remark}）"
+
+    def _add_scheduled(self, delay_ms: int, remark: str) -> None:
+        QTimer.singleShot(delay_ms, lambda: self._proactive_tick(remark))
+
+    def _proactive_tick(self, remark: str = "") -> None:
         if self.llm is None or self._proactive_suppressed():
             self.schedule_proactive()
             return
-        self.queue.submit(1, self._proactive_worker)
+        self.queue.submit(1, lambda: self._proactive_worker(remark))
 
     def _proactive_suppressed(self) -> bool:
         c = self.config["companion"]
@@ -295,17 +320,18 @@ class App(QObject):
             return True
         return self.companion is not None and self.companion.chat_window_open
 
-    def _proactive_worker(self) -> None:
+    def _proactive_worker(self, remark: str = "") -> None:
         from JChat.agent.prompts import build_memory_card, build_system_prompt
 
         card = build_memory_card("", self.memory, self.retriever, "", self.config)
         system = build_system_prompt(self.config["companion"]["persona"], card)
+        ask = f"（定时报点：{remark}。基于此主动对用户说一句话）" if remark else "（请主动搭话）"
         try:
             text = self.llm.complete(
                 [
                     {"role": "system", "content": system
                      + "\n\n现在你主动对用户说一句话（不超过 40 字，自然口语）。"},
-                    {"role": "user", "content": "（请主动搭话）"},
+                    {"role": "user", "content": ask},
                 ],
                 max_tokens=128,
             )
@@ -314,7 +340,7 @@ class App(QObject):
             self.schedule_proactive()
             return
         text = (text or "").strip()
-        if not text:
+        if not text or self.companion is None:
             self.schedule_proactive()
             return
         self.ui_task.emit(lambda: self.companion.show_proactive(text))

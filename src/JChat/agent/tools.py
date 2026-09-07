@@ -248,3 +248,125 @@ def recall(query: str, ctx: dict, k: int = 5) -> str:
     return _ok("recall", "\n".join(lines))
 
 
+@tool(
+    "查询当前可见窗口列表（含窗口句柄 hwnd 与焦点状态）。",
+    params={},
+)
+def query_windows(ctx: dict) -> str:
+    from JChat.agent.vision import list_windows
+
+    wins = [w for w in list_windows() if w["title"]]
+    lines = []
+    for w in wins:
+        mark = " | 【当前焦点】" if w["focused"] else ""
+        lines.append(f"hwnd: {w['hwnd']} | 标题: {w['title']}{mark}")
+    if not lines:
+        return _ok("query_windows", "（没有可见窗口）")
+    lines.append("提示：把 hwnd 传给 see_screen 可以直接看这个窗口的画面")
+    return _ok("query_windows", "\n".join(lines))
+
+
+@tool(
+    "看一眼屏幕：截图（全屏或指定 hwnd 的窗口）并用视觉模型分析画面内容。"
+    "想知道用户在做什么、陪着吐槽、帮忙排查界面问题时使用。",
+    params={
+        "hwnd": {"type": "integer", "description": "窗口句柄；-1 表示全屏（可先用 query_windows 查）"},
+        "prompt": {"type": "string", "description": "想从画面里知道什么"},
+    },
+)
+def see_screen(ctx: dict, hwnd: int = -1, prompt: str = "用两三句话描述画面主要内容") -> str:
+    from JChat.agent.vision import analyse, capture, list_windows
+
+    fg = next((w["title"] for w in list_windows() if w["focused"]), "未知")
+    prompt = f"{prompt}\n（当前用户焦点窗口：{fg}）"
+    path = capture(None if int(hwnd) < 0 else int(hwnd))
+    result = analyse(path, prompt, ctx["llm"])
+    return _ok("see_screen", f"画面分析：{result}")
+
+
+@tool(
+    "联网搜索（DuckDuckGo），返回前几条结果的标题/链接/摘要。",
+    params={
+        "query": {"type": "string"},
+        "k": {"type": "integer", "description": "条数上限，默认 5"},
+    },
+    required=["query"],
+)
+def web_search(query: str, ctx: dict, k: int = 5) -> str:
+    import re
+    from urllib.parse import parse_qs, unquote, urlparse
+
+    import requests
+
+    ua = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    lines: list[str] = []
+
+    def _clean(s: str) -> str:
+        return re.sub(r"<[^>]+>", "", s).strip()
+
+    def _real_url(href: str) -> str:
+        if href.startswith("//duckduckgo.com/l/") or "uddg=" in href:
+            q = parse_qs(urlparse(href).query)
+            return unquote(q.get("uddg", [href])[0])
+        return href
+
+    # 引擎回退链：DDG → Bing（国内网络可达性）
+    try:
+        resp = requests.get(
+            "https://html.duckduckgo.com/html/", params={"q": query}, timeout=15, headers=ua
+        )
+        resp.raise_for_status()
+        text = resp.text
+        titles = re.findall(r'class="result__a"[^>]*>(.*?)</a>', text, re.S)
+        hrefs = re.findall(r'class="result__a"[^>]*href="([^"]+)"', text)
+        snippets = re.findall(r'class="result__snippet"[^>]*>(.*?)</a>', text, re.S)
+        for i in range(min(len(titles), max(1, int(k)))):
+            url = _real_url(hrefs[i]) if i < len(hrefs) else ""
+            snippet = _clean(snippets[i]) if i < len(snippets) else ""
+            lines.append(f"{i + 1}. {_clean(titles[i])}\n   {url}\n   {snippet}")
+    except Exception as e:  # noqa: BLE001
+        logger.info("DDG 搜索失败，回退 Bing：%s", e)
+
+    if not lines:
+        try:
+            resp = requests.get(
+                "https://www.bing.com/search", params={"q": query, "mkt": "zh-CN"},
+                timeout=15, headers=ua,
+            )
+            resp.raise_for_status()
+            blocks = re.findall(r'<li class="b_algo".*?</li>', resp.text, re.S)
+            for i, block in enumerate(blocks[: max(1, int(k))]):
+                m_url = re.search(r'<h2[^>]*><a[^>]*href="([^"]+)"', block)
+                m_title = re.search(r'<h2[^>]*><a[^>]*>(.*?)</a>', block, re.S)
+                m_snip = re.search(r'<p[^>]*>(.*?)</p>', block, re.S)
+                if not m_title:
+                    continue
+                lines.append(
+                    f"{i + 1}. {_clean(m_title.group(1))}\n"
+                    f"   {m_url.group(1) if m_url else ''}\n"
+                    f"   {_clean(m_snip.group(1)) if m_snip else ''}"
+                )
+        except Exception as e:  # noqa: BLE001
+            return _err("web_search", f"DDG 与 Bing 均失败：{type(e).__name__}: {e}")
+
+    if not lines:
+        return _err("web_search", "没有解析到结果")
+    return _ok("web_search", "\n".join(lines))
+
+
+@tool(
+    "创建一个定时报点（ISO-8601，如 2026-09-07T22:30:00）。到点你会被唤醒并向用户主动说话。"
+    "用于早晚问候、提醒自己、记住用户提到的时间并守约。",
+    params={
+        "time": {"type": "string", "description": "ISO-8601 本地时间"},
+        "remark": {"type": "string", "description": "到点时提醒自己的话"},
+    },
+    required=["time"],
+)
+def schedule(time: str, ctx: dict, remark: str = "") -> str:
+    cb = ctx.get("scheduler")
+    if not cb:
+        return _err("schedule", "scheduler unavailable")
+    return cb(time, remark)
+
+

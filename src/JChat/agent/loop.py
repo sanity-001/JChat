@@ -29,6 +29,7 @@ class AgentContext:
     retriever: object | None = None
     cancel: threading.Event = field(default_factory=threading.Event)
     on_tool_event: Callable[[ToolEvent], None] | None = None
+    scheduler: object | None = None  # schedule 工具回调（AI 定时报点，借鉴 Alife SystemEvent）
 
     # 类字典访问（tools.py 按 dict 接口读取 ctx）
     def get(self, key: str, default=None):
