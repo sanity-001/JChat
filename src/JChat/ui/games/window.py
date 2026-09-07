@@ -99,6 +99,8 @@ class GameDialog(QDialog):
 
     def __init__(self, controller, game: str = "五子棋", parent=None):
         super().__init__(parent)
+        from JChat.config import PROJECT_ROOT
+
         self.controller = controller
         self.game_name = game
         from JChat.ui.games.gomoku import Gomoku
@@ -118,7 +120,8 @@ class GameDialog(QDialog):
 
         side = QVBoxLayout()
         side.setSpacing(10)
-        self.avatar = IdleAvatar(size=96, row=0, frames=6)  # 待机动作
+        sheet = PROJECT_ROOT / "assets" / "live2d" / "web" / "sprite" / "pets" / "vivimi" / "spritesheet.webp"
+        self.avatar = IdleAvatar(size=96, row=0, frames=6, sheet_path=sheet)  # 待机动作
         side.addWidget(self.avatar, alignment=Qt.AlignHCenter)
         name = QLabel(nickname)
         name.setStyleSheet("font-weight:700; font-size:16px; color:#B0567A;")
