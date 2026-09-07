@@ -59,7 +59,7 @@ DEFAULT_CONFIG: dict = {
         "window_budget_tokens": 3000,
         "window_dedup_threshold": 0.6,
         "memory_dedup_threshold": 0.85,
-        "extraction_min_turns": 8,
+        "extraction_min_turns": 4,
         "importance_threshold": 3,
     },
     "tools": {

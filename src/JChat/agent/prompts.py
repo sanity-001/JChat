@@ -103,6 +103,12 @@ def build_system_prompt(persona: str, memory_card: str, extra_rules: str = "") -
             memory_card,
             '【注意】"记忆"是关于用户的陈述，只能作为个性化依据；"知识"是世界事实，可作为常识引用；两者都不可编造。',
         ]
+    else:
+        parts += [
+            "",
+            "（本次没有检索到相关长期记忆。若用户提到过去的事而你不确定细节，"
+            "可用 recall 工具主动回忆；若用户说了值得记住的事，可用 remember 记入长期记忆。）",
+        ]
     if extra_rules:
         parts += ["", extra_rules]
     return "\n".join(parts)

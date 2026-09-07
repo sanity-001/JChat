@@ -19,16 +19,17 @@ from JChat.memory.vector import tokenize
 
 logger = logging.getLogger("JChat.extractor")
 
-_SYSTEM = """你从对话中抽取长期记忆。
+_SYSTEM = """你是用户的桌面搭子小J。你即将把一段刚发生的对话整理成长期记忆。
+以你自己的第一人称视角、带感情但精简地提炼：关于用户的重要事实（偏好/经历/约定/情绪）、以及你了解到的世界知识。
 只输出 JSON，不要任何解释。结构如下：
 {
-  "facts": [{"content": "关于用户的一句话事实（偏好/经历/承诺）",
+  "facts": [{"content": "以“用户…”开头的一句话事实（避免第一人称主语，方便日后检索）",
              "importance": 1-10, "entities": ["可关联的实体名（可选）"]}],
   "relations": [{"head": "实体名", "rel_type": "关系名", "tail": "实体名"}]
 }
 关系类型仅限：implements, based_on, outperforms, used_in, proposes。
 只抽取对话中明确陈述的内容；琐碎寒暄不抽；facts 只抽关于用户的，relations 只抽世界知识。
-"""
+宁可少而准，不要多而杂。"""
 
 _USER = """对话记录：
 {transcript}

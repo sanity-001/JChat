@@ -200,14 +200,10 @@ class App(QObject):
         limit = self.config["memory"]["window_turns"] * 2
         if len(self.window_msgs) > limit:
             self.window_msgs = self.window_msgs[-limit:]
+        self._maybe_rolling_extract()
 
-    # ------------------------------------------------------------ session lifecycle
-    def _arm_session_end(self) -> None:
-        self._session_timer.start(SESSION_END_MS)
-
-    def _on_session_end(self) -> None:
-        """对话流结束（30s 无新消息）：抽取自上次以来新增的轮次；不清空会话（历史保留，重开大窗可见）。"""
-        self._session_timer.stop()
+    def _maybe_rolling_extract(self) -> None:
+        """滚动抽取（借鉴 Alife：每轮回复后检查，不等会话结束）：新增轮次达标即后台抽取。"""
         if not self.llm:
             return
         transcript = list(self.history.transcript())
@@ -216,6 +212,15 @@ class App(QObject):
             new_part = transcript[self._extracted_upto:]
             self.queue.submit(2, lambda: self._extract(new_part))
             self._extracted_upto = len(transcript)
+
+    # ------------------------------------------------------------ session lifecycle
+    def _arm_session_end(self) -> None:
+        self._session_timer.start(SESSION_END_MS)
+
+    def _on_session_end(self) -> None:
+        """对话流结束（30s 无新消息）：兜底抽取自上次以来新增的轮次；不清空会话（历史保留，重开大窗可见）。"""
+        self._session_timer.stop()
+        self._maybe_rolling_extract()
 
     def _extract(self, transcript: list[dict]) -> None:
         result = extract_session(transcript, self.memory, self.store, self.llm, cfg=self.config)

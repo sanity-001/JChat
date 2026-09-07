@@ -137,6 +137,27 @@ def remember(content: str, ctx: dict, entity_names: list[str] | None = None, imp
     return _ok("remember", f"saved ({memory_id[:8]}…)")
 
 
+def recall(query: str, ctx: dict, k: int = 5) -> str:
+    memory = ctx["memory"]
+    retriever = ctx.get("retriever")
+    if not query or not query.strip():
+        return _err("recall", "query required")
+    lines: list[str] = []
+    for m in memory.recall(query.strip(), k=max(1, int(k))):
+        lines.append(f"- {m['content']}")
+    if retriever is not None:
+        names: set[str] = set()
+        for ent in retriever.entity_link(query.strip()):
+            names.add(ent["name"])
+        for hit in retriever.graph_search(query.strip(), depth=2, k=20):
+            names.add(hit.name)
+        for r in retriever._triples_for(names, 6):
+            lines.append(f"- {r['head_name']} --{r['rel_type']}--> {r['tail_name']}")
+    if not lines:
+        return _ok("recall", "（记忆中没有找到相关内容）")
+    return _ok("recall", "\n".join(lines))
+
+
 def tool_schemas() -> list[dict]:
     return [
         {
@@ -220,6 +241,22 @@ def tool_schemas() -> list[dict]:
                 },
             },
         },
+        {
+            "type": "function",
+            "function": {
+                "name": "recall",
+                "description": "主动检索长期记忆与知识图谱。当用户提到过去的事、"
+                "你记忆卡里没有相关内容、或想不起细节时使用。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "检索关键词或问题"},
+                        "k": {"type": "integer", "description": "返回条数上限，默认 5"},
+                    },
+                    "required": ["query"],
+                },
+            },
+        },
     ]
 
 
@@ -242,6 +279,8 @@ def execute(name: str, args: dict, ctx: dict) -> str:
             return remember(
                 args.get("content", ""), ctx, args.get("entity_names"), args.get("importance", 3.0)
             )
+        if name == "recall":
+            return recall(args.get("query", ""), ctx, args.get("k", 5))
         return _err(name, f"unknown tool {name}")
     except Exception as e:  # noqa: BLE001
         logger.exception("tool %s failed", name)
