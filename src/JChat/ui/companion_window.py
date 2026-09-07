@@ -178,7 +178,7 @@ class CompanionWindow(QWidget):
 
     def _init_poll(self) -> None:
         self._poll = QTimer(self)
-        self._poll.setInterval(200)
+        self._poll.setInterval(40)  # 拖动跟手性：200ms 会肉眼可见地跳步
         self._poll.timeout.connect(self._poll_events)
         self._poll.start()
 

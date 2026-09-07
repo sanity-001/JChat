@@ -46,9 +46,12 @@ var talking = false;
 var oneShot = null;   // {row, frames, done} 一次性动画（playTail 等）
 var rect = { x: 0, y: 0, w: 0, h: 0 }; // 绘制区（命中区按此缩放）
 var frameIdx = 0;
+var dragDir = null;   // 'left' | 'right' | null（拖动时播跑动动画并镜像）
+var FACE = 1;         // 素材默认朝向：1=朝右。若跑动方向反了改成 -1
 
 function curRow() {
     if (oneShot) return ROWS[oneShot.row];
+    if (dragDir) return ROWS.tongue; // 拖动 = 跑动
     if (talking && (expr === 'idle' || expr === 'happy')) return ROWS.talk;
     return ROWS[EXPR_MAP[expr]] || ROWS.idle;
 }
@@ -80,8 +83,17 @@ function tick(ts) {
     var row = curRow();
     var frames = row[1];
     var i = frameIdx % frames;
-    ctx.drawImage(sheet, i * FRAME_W, row[0] * FRAME_H, FRAME_W, FRAME_H,
-        rect.x, rect.y, rect.w, rect.h);
+    var sx = i * FRAME_W, sy = row[0] * FRAME_H;
+    var flipped = (dragDir === 'left' && FACE === 1) || (dragDir === 'right' && FACE === -1);
+    if (flipped) {
+        ctx.save();
+        ctx.translate(rect.x + rect.w, rect.y);
+        ctx.scale(-1, 1);
+        ctx.drawImage(sheet, sx, sy, FRAME_W, FRAME_H, 0, 0, rect.w, rect.h);
+        ctx.restore();
+    } else {
+        ctx.drawImage(sheet, sx, sy, FRAME_W, FRAME_H, rect.x, rect.y, rect.w, rect.h);
+    }
 }
 
 // ---------------- 表情 / 说话 / 动作 ----------------
@@ -153,9 +165,16 @@ document.addEventListener('mousedown', function (e) {
     dragging = true;
 });
 document.addEventListener('mousemove', function (e) {
-    if (dragging) post({ type: 'drag', dx: e.movementX, dy: e.movementY });
+    if (dragging) {
+        post({ type: 'drag', dx: e.movementX, dy: e.movementY });
+        if (e.movementX > 1) dragDir = 'right';
+        else if (e.movementX < -1) dragDir = 'left';
+    }
 });
-document.addEventListener('mouseup', function () { dragging = false; });
+document.addEventListener('mouseup', function () {
+    dragging = false;
+    dragDir = null; // 松手恢复原表情
+});
 
 // ---------------- 悬停 / 气泡 / 输入 ----------------
 var overlay = document.getElementById('overlay');
