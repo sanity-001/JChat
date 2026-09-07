@@ -1,11 +1,18 @@
 [project]
 name = "jchat"
 version = "0.1.0"
-description = "JChat — 一个具备长期记忆与工作能力的桌面搭子"
+description = "JChat —— 一个具备长期记忆与工作能力的桌面搭子"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
-keywords = ["desktop", "companion", "memory", "agent", "pyside6"]
+license = { text = "GPL-3.0-or-later" }
+keywords = ["desktop", "companion", "memory", "agent", "pyside6", "live2d"]
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Desktop Environment",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
     "pyside6==6.8.3",
     "openai>=1.30",

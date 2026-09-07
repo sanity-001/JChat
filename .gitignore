@@ -9,6 +9,12 @@ wayfinder/
 research/
 tests/
 
+# 本地工具与个人配置（开源仓库不含）
+prototypes/
+opencode.json
+config.json
+
+
 # Python
 .venv/
 __pycache__/
