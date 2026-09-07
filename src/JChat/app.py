@@ -170,7 +170,7 @@ class App(QObject):
         turn_ctx = AgentContext(
             config=self.config, llm=self.llm, memory=self.memory, retriever=self.retriever,
             cancel=self.ctx.cancel, on_tool_event=on_tool_event,
-            scheduler=self._schedule_event,
+            scheduler=self._schedule_event, open_game=self._open_game_cb,
         )
         try:
             reply, events = run_turn(text, self.window_msgs, turn_ctx, proactive_text=proactive)
@@ -276,6 +276,11 @@ class App(QObject):
         from JChat.ui.games import open_game_window
 
         open_game_window(self, game)
+
+    def _open_game_cb(self, game: str = "五子棋") -> str:
+        """worker 线程回调：转 UI 线程开窗。"""
+        self.ui_task.emit(lambda: self.open_game(game))
+        return f"已打开{game}窗口，好好陪用户玩，输赢都要有风度。"
 
     def open_settings(self) -> None:
         if self.companion is None:

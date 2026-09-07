@@ -370,3 +370,16 @@ def schedule(time: str, ctx: dict, remark: str = "") -> str:
     return cb(time, remark)
 
 
+@tool(
+    "打开游戏窗口，陪用户一起玩。当用户说想玩游戏/下棋/来一局时使用。",
+    params={
+        "game": {"type": "string", "description": "游戏名，当前支持：五子棋"},
+    },
+)
+def play_game(ctx: dict, game: str = "五子棋") -> str:
+    cb = ctx.get("open_game")
+    if not cb:
+        return _err("play_game", "unavailable")
+    return cb(game)
+
+

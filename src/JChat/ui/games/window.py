@@ -118,7 +118,7 @@ class GameDialog(QDialog):
 
         side = QVBoxLayout()
         side.setSpacing(10)
-        self.avatar = IdleAvatar(size=96, row=4, frames=5)  # 开心喘气行动画
+        self.avatar = IdleAvatar(size=96, row=0, frames=6)  # 待机动作
         side.addWidget(self.avatar, alignment=Qt.AlignHCenter)
         name = QLabel(nickname)
         name.setStyleSheet("font-weight:700; font-size:16px; color:#B0567A;")
@@ -190,8 +190,10 @@ class GameDialog(QDialog):
                 f"你是{nickname}。{persona}\n"
                 "你们正在下五子棋（15×15，你执粉子）。\n"
                 + self.g.serialize()
+                + f"\n当前第 {len(self.g.history) + 1} 手。"
                 + '\n\n只输出 JSON：{"col": 数字, "row": 数字, "quip": "一句不超过20字的你的口吻的话"}\n'
                 "col=列(1-15)，row=行(1-15)，只能下在空位。策略：能连五就赢，能堵对方四连就堵，否则靠近已有棋子扩展。"
+                "quip 要结合当前局势（开局试探/堵截成功/即将连五/落后追击），贴合人设，简短。"
             )
             try:
                 resp = self.controller.llm.chat(
