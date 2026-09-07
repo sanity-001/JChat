@@ -87,10 +87,12 @@ setInterval(function () {
 }, 1000);
 
 // ---------------- 点击 / 连击（圆形蒙版近似角色轮廓：头圆+身圆） ----------------
+// 角色可见范围实测：模型 position(240,365) scale0.0952 → 角色约占 x103-372, y184-533
+// 头：y184-325 → 圆(237,258,r 98)；身：y325-533 → 圆(237,432,r 118)
 function _petHit(x, y) {
     var zones = [
-        { cx: 240, cy: 300, r: 155, name: 'Head' },   // 头
-        { cx: 240, cy: 460, r: 115, name: 'Body' },   // 身/腿
+        { cx: 237, cy: 258, r: 98, name: 'Head' },   // 头
+        { cx: 237, cy: 432, r: 118, name: 'Body' },  // 身/腿
     ];
     var areas = [];
     for (var i = 0; i < zones.length; i++) {
@@ -104,6 +106,7 @@ function _petHit(x, y) {
 var lastPoke = 0, pokeCount = 0;
 function _registerPetClick() {
     if (!model) return;
+    model.interactive = true;
     model.on('pointertap', function (e) {
         var areas = _petHit(e.data.global.x, e.data.global.y);
         if (!areas || areas.length === 0) return; // 点中透明区：忽略
