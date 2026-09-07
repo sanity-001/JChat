@@ -36,11 +36,11 @@ SESSION_END_MS = 30_000
 class App(QObject):
     ui_task = Signal(object)
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, store_path: str | None = None):
         super().__init__()
         self.ui_task.connect(self._run_ui_task)
         self.config = config
-        self.store = SQLiteStore(str(PROJECT_ROOT / "jchat.sqlite"))
+        self.store = SQLiteStore(store_path or str(PROJECT_ROOT / "jchat.sqlite"))
         self.memory = AgentMemory(
             self.store,
             working_window=config["memory"]["working_window"],

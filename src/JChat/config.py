@@ -64,6 +64,7 @@ DEFAULT_CONFIG: dict = {
         "extraction_min_turns": 4,
         "summary_min_turns": 6,
         "summary_max_count": 4,
+        "inject_all_threshold": 30,
         "importance_threshold": 3,
     },
     "tools": {
@@ -134,7 +135,7 @@ def _sanitize(cfg: dict) -> dict:
     for sec, keys in {
         "llm": (str, str, str, str, int, int, NUM, NUM, int),
         "agent": (int,),
-        "memory": (NUM, int, int, int, int, NUM, int, int, NUM, NUM, int, int, int, NUM),
+        "memory": (NUM, int, int, int, int, NUM, int, int, NUM, NUM, int, int, int, int, NUM),
     }.items():
         for key, expected in zip(DEFAULT_CONFIG[sec], keys, strict=True):
             check(sec, key, expected)

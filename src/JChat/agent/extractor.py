@@ -20,18 +20,31 @@ from JChat.memory.vector import tokenize
 logger = logging.getLogger("JChat.extractor")
 
 _SYSTEM = """你是用户的桌面搭子小J。你即将把一段刚发生的对话整理成长期记忆。
-以你自己的第一人称视角、带感情但精简地提炼：关于用户的重要事实（偏好/经历/约定/情绪）、以及你了解到的世界知识。
+以你自己的第一人称视角、带感情但精简地提炼。
+逐轮检查对话中的每个信息点，以下类型都要考虑（通常每段对话至少有 1-3 条）：
+① 用户的身份信息（名字、职业、生日、所在地）
+② 偏好与厌恶（喜欢/讨厌什么）
+③ 用户身边的人、宠物、物品
+④ 时间约定与日程（每周/每天什么时候做什么）
+⑤ 用户在做的事与目标（项目、学习、计划）
+⑥ 你了解到的世界知识
+
 只输出 JSON，不要任何解释。结构如下：
-{
-  "facts": [{"content": "以“用户…”开头的一句话事实（避免第一人称主语，方便日后检索）",
-             "importance": 1-10, "entities": ["可关联的实体名（可选）"]}],
-  "relations": [{"head": "实体名", "rel_type": "关系名", "tail": "实体名"}]
-}
+{"facts": [{"content": "以“用户…”开头的一句话事实",
+            "importance": 1-10, "entities": ["可关联的实体名（可选）"]}],
+ "relations": [{"head": "实体名", "rel_type": "关系名", "tail": "实体名"}]}
 关系类型仅限：implements, based_on, outperforms, used_in, proposes。
+示例：
+- 用户说"我叫小明" → {"content": "用户名叫小明", "importance": 9}
+- 用户说"我讨厌香菜" → {"content": "用户讨厌吃香菜", "importance": 7}
+- 用户说"我每周三加班到十点" → {"content": "用户每周三晚上加班到十点", "importance": 7}
 只抽取对话中明确陈述的内容；琐碎寒暄不抽；facts 只抽关于用户的，relations 只抽世界知识。
 宁可少而准，不要多而杂。"""
 
-_USER = """对话记录：
+_USER = """已有记忆（与这些重复或同义的不要输出）：
+{existing}
+
+对话记录：
 {transcript}
 
 返回 JSON。"""
@@ -66,13 +79,21 @@ def extract_session(
 
     lines = [f"{m['role']}: {m['content']}" for m in transcript]
     transcript_text = "\n".join(lines)
+    existing = memory.recall(transcript_text[:300], k=12) if memory else []
+    existing_txt = "\n".join(f"- {m['content']}" for m in existing) or "（暂无）"
     try:
         resp = llm.chat(
             [
                 {"role": "system", "content": _SYSTEM},
-                {"role": "user", "content": _USER.format(transcript=transcript_text[:24000])},
+                {
+                    "role": "user",
+                    "content": _USER.format(
+                        existing=existing_txt, transcript=transcript_text[:24000]
+                    ),
+                },
             ],
             max_tokens=2048,
+            temperature=0.1,  # 结构化抽取：低温降低方差
         )
         raw = resp["choices"][0]["message"]["content"] or "{}"
         data = _parse_json(raw)
@@ -145,6 +166,7 @@ def _chat(raw: str, llm, system: str) -> str:
             {"role": "user", "content": raw[:24000]},
         ],
         max_tokens=512,
+        temperature=0.4,
     )
     return (resp["choices"][0]["message"]["content"] or "").strip()
 

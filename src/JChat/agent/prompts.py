@@ -55,16 +55,28 @@ def build_memory_card(
     budget = mcfg["card_budget_tokens"]
     ratio = mcfg["card_memory_ratio"]
 
-    items: list[tuple[str, float]] = []
     now = time.time()
-    for m in memory.recall(query, k=k):
-        if (
-            window_text
-            and _overlap(set(JChat_tokenize(m["content"])), set(JChat_tokenize(window_text)))
-            >= mcfg["window_dedup_threshold"]
-        ):
-            continue
-        items.append((f"[{rel_time(m['created_at'], now)}] {m['content']}", m.get("score", 0.0)))
+    items: list[tuple[str, float]] = []
+    all_mem = [m for m in memory.state() if m.get("scope") != "summary"]
+    if len(all_mem) <= mcfg.get("inject_all_threshold", 30):
+        # 记忆少时全量注入（在场感优先，规避"问答式查询 vs 陈述式存储"的字面检索鸿沟）
+        for m in sorted(all_mem, key=lambda x: (-x["importance"], -x["created_at"])):
+            if (
+                window_text
+                and _overlap(set(JChat_tokenize(m["content"])), set(JChat_tokenize(window_text)))
+                >= mcfg["window_dedup_threshold"]
+            ):
+                continue
+            items.append((f"[{rel_time(m['created_at'], now)}] {m['content']}", m["importance"]))
+    else:
+        for m in memory.recall(query, k=k):
+            if (
+                window_text
+                and _overlap(set(JChat_tokenize(m["content"])), set(JChat_tokenize(window_text)))
+                >= mcfg["window_dedup_threshold"]
+            ):
+                continue
+            items.append((f"[{rel_time(m['created_at'], now)}] {m['content']}", m.get("score", 0.0)))
 
     triples: list[str] = []
     if retriever is not None:
