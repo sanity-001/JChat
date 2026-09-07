@@ -168,6 +168,11 @@ class CompanionWindow(QWidget):
         t = ev.get("type")
         if t == "tap-pos":
             logger.info("tap (%s, %s)", ev.get("x"), ev.get("y"))
+            try:
+                with open(PROJECT_ROOT / "tap_coords.log", "a", encoding="utf-8") as _f:
+                    _f.write(f"{ev.get('x')},{ev.get('y')}\n")
+            except OSError:
+                pass
         elif t == "poke":
             if ev.get("region") == "tail":
                 self.set_expression("happy")
