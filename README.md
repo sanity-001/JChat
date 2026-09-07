@@ -35,11 +35,11 @@ uv run python -m JChat  # 启动
 - **`"sprite"`（默认）**：Petdex 精灵图（`assets/live2d/web/sprite/pets/vivimi`，明日方舟维什戴尔同人二创）。帧动画，资源占用极低
 - **`"live2d"`**：Live2D 模型（`assets/live2d/models/vvm`，同为维什戴尔同人二创）。支持参数级表情/口型/视线跟随
 
-仓库内的形象素材（Live2D 模型、精灵图、`pet_image/` 头像 gif）均为游戏《明日方舟》/《原神》角色的**同人二创作品**：
+仓库内置的形象素材（Live2D 模型与精灵图）为游戏《明日方舟》角色**维什戴尔（Wiš'adel）的同人二创作品**：
 
-- 版权归原作厂商（鹰角网络/米哈游）及各同人素材原作者所有
+- 版权归原作《明日方舟》（鹰角网络）及同人素材原作者所有
 - 仅供个人学习与娱乐使用，**禁止商用**
-- 如需移除，删除 `assets/live2d/models/vvm`、`assets/live2d/web/sprite/pets/vivimi`、`pet_image/`，替换任意 Cubism 4/5 模型（live2d 后端）、Petdex 精灵图（sprite 后端，`pet.json` + 8×9 网格 spritesheet）或自定义头像即可
+- 如需移除，删除 `assets/live2d/models/vvm` 与 `assets/live2d/web/sprite/pets/vivimi`，替换任意 Cubism 4/5 模型（live2d 后端）或 Petdex 精灵图（sprite 后端，`pet.json` + 8×9 网格 spritesheet）即可
 - Live2D 渲染依赖 [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display)（MIT）与 Live2D Cubism Core（Live2D Inc. 专有许可，见其官方条款）
 
 ## 开发

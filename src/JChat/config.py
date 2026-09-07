@@ -35,7 +35,7 @@ DEFAULT_CONFIG: dict = {
     "agent": {"max_iterations": 5},
     "companion": {
         "nickname": "小J",
-        "icon": "pet_image/yuansheng/七七.gif",
+        "icon": "",
         "persona": "一个活泼幽默、善解人意的桌面搭子，说话简洁自然，偶尔开个玩笑。",
         "avatar_backend": "sprite",
         "avatar_scale": 0.82,
