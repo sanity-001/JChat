@@ -123,15 +123,22 @@ setInterval(function () {
 }, 1000);
 
 // ---------------- 点击 / 连击（圆形蒙版近似角色轮廓：头圆+身圆） ----------------
-// 实测校准（10 边缘点拟合）：头心(241,397) r74、身心(246,448) r55、尾=两小圆贴尾身
+// 实测校准（10 边缘点拟合）：头心(241,397) r74、身心(246,448) r55、尾=长条胶囊
+function _distToSegment(px, py, x1, y1, x2, y2) {
+    var dx = x2 - x1, dy = y2 - y1;
+    var l2 = dx * dx + dy * dy;
+    var t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / l2));
+    return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
 function _petHit(x, y) {
-    var zones = [
-        { cx: 241, cy: 397, r: 74, name: 'Head' },     // 头
-        { cx: 246, cy: 448, r: 55, name: 'Body' },     // 身/腿
-        { cx: 287, cy: 467, r: 22, name: 'Tail' },     // 尾根-中段
-        { cx: 319, cy: 471, r: 20, name: 'Tail' },     // 尾尖
-    ];
     var areas = [];
+    // 尾巴（优先级最高）：长条胶囊 (272,463)-(330,475) 半径18
+    if (_distToSegment(x, y, 272, 463, 330, 475) <= 18) areas.push('Tail');
+    // 头 / 身
+    var zones = [
+        { cx: 241, cy: 397, r: 74, name: 'Head' },
+        { cx: 246, cy: 448, r: 55, name: 'Body' },
+    ];
     for (var i = 0; i < zones.length; i++) {
         var z = zones[i];
         var dx = x - z.cx, dy = y - z.cy;
@@ -148,7 +155,8 @@ function _registerPetClick() {
         post({ type: 'tap-pos', x: Math.round(e.data.global.x), y: Math.round(e.data.global.y) });
         var areas = _petHit(e.data.global.x, e.data.global.y);
         if (!areas || areas.length === 0) return; // 点中透明区：忽略
-        var region = areas.indexOf('Head') >= 0 ? 'head' : 'body';
+        var region = areas.indexOf('Tail') >= 0 ? 'tail'
+            : (areas.indexOf('Head') >= 0 ? 'head' : 'body'); // Tail > Head > Body
         var now = Date.now();
         if (now - lastPoke < 2500) pokeCount++;
         else pokeCount = 1;
