@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QEvent, Qt, Signal
+from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import (
     QDialog,
     QFrame,
@@ -103,8 +104,9 @@ class ChatWindow(QDialog):
         input_row = QHBoxLayout()
         self.input = QPlainTextEdit()
         self.input.setObjectName("Input")
-        self.input.setPlaceholderText("说点什么…（Enter 发送）")
+        self.input.setPlaceholderText("说点什么…（Enter 发送，Shift+Enter 换行）")
         self.input.setFixedHeight(52)
+        self.input.installEventFilter(self)
         self.send_btn = QPushButton("发送")
         self.send_btn.setObjectName("Send")
         self.send_btn.clicked.connect(self._send)
@@ -177,6 +179,17 @@ class ChatWindow(QDialog):
             return
         self.input.clear()
         self.send_requested.emit(text)
+
+    def eventFilter(self, obj, event):  # noqa: N802
+        if obj is self.input and event.type() == QEvent.Type.KeyPress:
+            key_event = QKeyEvent(event)
+            if key_event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                if key_event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                    self.input.insertPlainText("\n")
+                elif self.send_btn.isEnabled():
+                    self._send()
+                return True
+        return super().eventFilter(obj, event)
 
     def closeEvent(self, event):  # noqa: N802
         self.closed.emit()
