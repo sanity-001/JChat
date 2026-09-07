@@ -36,6 +36,61 @@ def _err(name: str, msg: str) -> str:
     return f"[{name}] [Error] {msg}"
 
 
+# ------------------------------------------------------------------ registry
+# 开源接缝①（docs/system.md §6）：新工具只需在函数上挂 @tool() 装饰器，
+# schema 与执行自动注册，loop/app 无需改动。
+_TOOL_REGISTRY: dict[str, dict] = {}
+
+
+def tool(description: str, params: dict, required: list[str] | None = None):
+    """把工具函数注册进注册表。handler 签名约定：(**args, ctx)。"""
+
+    def deco(fn):
+        _TOOL_REGISTRY[fn.__name__] = {
+            "schema": {
+                "type": "function",
+                "function": {
+                    "name": fn.__name__,
+                    "description": description,
+                    "parameters": {
+                        "type": "object",
+                        "properties": params,
+                        "required": required or [],
+                    },
+                },
+            },
+            "handler": fn,
+        }
+        return fn
+
+    return deco
+
+
+def tool_schemas() -> list[dict]:
+    return [entry["schema"] for entry in _TOOL_REGISTRY.values()]
+
+
+def execute(name: str, args: dict, ctx: dict) -> str:
+    cancel = ctx.get("cancel")
+    if cancel is not None and cancel.is_set():
+        return _err(name, "cancelled")
+    entry = _TOOL_REGISTRY.get(name)
+    if entry is None:
+        return _err(name, f"unknown tool {name}")
+    try:
+        return entry["handler"](**args, ctx=ctx)
+    except TypeError as e:
+        return _err(name, f"bad arguments: {e}")
+    except Exception as e:  # noqa: BLE001
+        return _err(name, f"{type(e).__name__}: {e}")
+
+
+@tool(
+    "在本地执行一段 Python 代码（工作目录为配置的 working_dir，可访问网络与文件系统）。"
+    "返回 stdout/stderr。",
+    params={"code": {"type": "string"}},
+    required=["code"],
+)
 def run_python(code: str, ctx: dict) -> str:
     cfg = ctx["config"]
     tcfg = cfg["tools"]
@@ -67,6 +122,7 @@ def run_python(code: str, ctx: dict) -> str:
     return _ok("run_python", _clip(output, limit))
 
 
+@tool("读取本地文件内容（文本，支持任意路径）。", params={"path": {"type": "string"}}, required=["path"])
 def read_file(path: str, ctx: dict) -> str:
     p = Path(path)
     if not p.is_file():
@@ -79,6 +135,11 @@ def read_file(path: str, ctx: dict) -> str:
     return _ok("read_file", _clip(text, limit))
 
 
+@tool(
+    "写入本地文件（自动创建父目录，UTF-8）。",
+    params={"path": {"type": "string"}, "content": {"type": "string"}},
+    required=["path", "content"],
+)
 def write_file(path: str, content: str, ctx: dict) -> str:
     p = Path(path)
     try:
@@ -90,6 +151,7 @@ def write_file(path: str, content: str, ctx: dict) -> str:
     return _ok("write_file", f"written {len(content)} bytes to {path}")
 
 
+@tool("列出目录内容（递归请多次调用）。", params={"path": {"type": "string"}}, required=["path"])
 def list_files(path: str, ctx: dict) -> str:
     p = Path(path)
     if not p.is_dir():
@@ -107,6 +169,11 @@ def list_files(path: str, ctx: dict) -> str:
 _TAG_RE = re.compile(r"<[^>]+>")
 
 
+@tool(
+    "抓取网页并返回纯文本（仅 http/https，上限 1MB）。",
+    params={"url": {"type": "string"}},
+    required=["url"],
+)
 def web_fetch(url: str, ctx: dict) -> str:
     tcfg = ctx["config"]["tools"]
     if not url.lower().startswith(("http://", "https://")):
@@ -129,6 +196,19 @@ def web_fetch(url: str, ctx: dict) -> str:
         return _err("web_fetch", f"{type(e).__name__}: {e}")
 
 
+@tool(
+    "把一条关于用户的事实写入长期记忆（重要度 1-10，默认 3）。",
+    params={
+        "content": {"type": "string"},
+        "entity_names": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "可关联的知识库实体名",
+        },
+        "importance": {"type": "number"},
+    },
+    required=["content"],
+)
 def remember(content: str, ctx: dict, entity_names: list[str] | None = None, importance: float = 3.0) -> str:
     memory = ctx["memory"]
     if not content or not content.strip():
@@ -137,6 +217,14 @@ def remember(content: str, ctx: dict, entity_names: list[str] | None = None, imp
     return _ok("remember", f"saved ({memory_id[:8]}…)")
 
 
+@tool(
+    "主动检索长期记忆与知识图谱。当用户提到过去的事、你记忆卡里没有相关内容、或想不起细节时使用。",
+    params={
+        "query": {"type": "string", "description": "检索关键词或问题"},
+        "k": {"type": "integer", "description": "返回条数上限，默认 5"},
+    },
+    required=["query"],
+)
 def recall(query: str, ctx: dict, k: int = 5) -> str:
     from JChat.agent.prompts import rel_time
 
@@ -160,130 +248,3 @@ def recall(query: str, ctx: dict, k: int = 5) -> str:
     return _ok("recall", "\n".join(lines))
 
 
-def tool_schemas() -> list[dict]:
-    return [
-        {
-            "type": "function",
-            "function": {
-                "name": "run_python",
-                "description": "在本地执行一段 Python 代码（工作目录为配置的 working_dir，"
-                "可访问网络与文件系统）。返回 stdout/stderr。",
-                "parameters": {
-                    "type": "object",
-                    "properties": {"code": {"type": "string"}},
-                    "required": ["code"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "read_file",
-                "description": "读取本地文件内容（文本，支持任意路径）。",
-                "parameters": {
-                    "type": "object",
-                    "properties": {"path": {"type": "string"}},
-                    "required": ["path"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "write_file",
-                "description": "写入本地文件（自动创建父目录，UTF-8）。",
-                "parameters": {
-                    "type": "object",
-                    "properties": {"path": {"type": "string"}, "content": {"type": "string"}},
-                    "required": ["path", "content"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "list_files",
-                "description": "列出目录内容（递归请多次调用）。",
-                "parameters": {
-                    "type": "object",
-                    "properties": {"path": {"type": "string"}},
-                    "required": ["path"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "web_fetch",
-                "description": "抓取网页并返回纯文本（仅 http/https，上限 1MB）。",
-                "parameters": {
-                    "type": "object",
-                    "properties": {"url": {"type": "string"}},
-                    "required": ["url"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "remember",
-                "description": "把一条关于用户的事实写入长期记忆（重要度 1-10，默认 3）。",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "content": {"type": "string"},
-                        "entity_names": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                            "description": "可关联的知识库实体名",
-                        },
-                        "importance": {"type": "number"},
-                    },
-                    "required": ["content"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "recall",
-                "description": "主动检索长期记忆与知识图谱。当用户提到过去的事、"
-                "你记忆卡里没有相关内容、或想不起细节时使用。",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {"type": "string", "description": "检索关键词或问题"},
-                        "k": {"type": "integer", "description": "返回条数上限，默认 5"},
-                    },
-                    "required": ["query"],
-                },
-            },
-        },
-    ]
-
-
-def execute(name: str, args: dict, ctx: dict) -> str:
-    cancel = ctx.get("cancel")
-    if cancel is not None and cancel.is_set():
-        return _err(name, "cancelled")
-    try:
-        if name == "run_python":
-            return run_python(args.get("code", ""), ctx)
-        if name == "read_file":
-            return read_file(args.get("path", ""), ctx)
-        if name == "write_file":
-            return write_file(args.get("path", ""), args.get("content", ""), ctx)
-        if name == "list_files":
-            return list_files(args.get("path", ""), ctx)
-        if name == "web_fetch":
-            return web_fetch(args.get("url", ""), ctx)
-        if name == "remember":
-            return remember(
-                args.get("content", ""), ctx, args.get("entity_names"), args.get("importance", 3.0)
-            )
-        if name == "recall":
-            return recall(args.get("query", ""), ctx, args.get("k", 5))
-        return _err(name, f"unknown tool {name}")
-    except Exception as e:  # noqa: BLE001
-        logger.exception("tool %s failed", name)
-        return _err(name, f"{type(e).__name__}: {e}")
