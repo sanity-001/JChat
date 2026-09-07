@@ -108,6 +108,7 @@ function _registerPetClick() {
     if (!model) return;
     model.interactive = true;
     model.on('pointertap', function (e) {
+        post({ type: 'tap-pos', x: Math.round(e.data.global.x), y: Math.round(e.data.global.y) });
         var areas = _petHit(e.data.global.x, e.data.global.y);
         if (!areas || areas.length === 0) return; // 点中透明区：忽略
         var region = areas.indexOf('Head') >= 0 ? 'head' : 'body';
