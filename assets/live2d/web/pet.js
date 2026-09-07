@@ -86,15 +86,28 @@ setInterval(function () {
     }
 }, 1000);
 
-// ---------------- 点击 / 连击（只认伙伴本体：Pixi 模型 pointertap） ----------------
+// ---------------- 点击 / 连击（圆形蒙版近似角色轮廓：头圆+身圆） ----------------
+function _petHit(x, y) {
+    var zones = [
+        { cx: 240, cy: 300, r: 155, name: 'Head' },   // 头
+        { cx: 240, cy: 460, r: 115, name: 'Body' },   // 身/腿
+    ];
+    var areas = [];
+    for (var i = 0; i < zones.length; i++) {
+        var z = zones[i];
+        var dx = x - z.cx, dy = y - z.cy;
+        if (dx * dx + dy * dy <= z.r * z.r) areas.push(z.name);
+    }
+    return areas;
+}
+
 var lastPoke = 0, pokeCount = 0;
 function _registerPetClick() {
     if (!model) return;
-    model.interactive = true;
     model.on('pointertap', function (e) {
-        var topZone = 170;
-        var headLimit = topZone + (window.innerHeight - topZone) * 0.35;
-        var region = e.data.global.y < headLimit ? 'head' : 'body';
+        var areas = _petHit(e.data.global.x, e.data.global.y);
+        if (!areas || areas.length === 0) return; // 点中透明区：忽略
+        var region = areas.indexOf('Head') >= 0 ? 'head' : 'body';
         var now = Date.now();
         if (now - lastPoke < 2500) pokeCount++;
         else pokeCount = 1;
@@ -103,6 +116,7 @@ function _registerPetClick() {
         else post({ type: 'poke', region: region });
     });
 }
+window.__petHit = _petHit;
 
 // 右键菜单事件
 document.addEventListener('contextmenu', function (e) {
@@ -219,6 +233,7 @@ function init() {
     PIXI.live2d.Live2DModel.from(modelUrl, { autoInteract: false })
         .then(function (m) {
             model = m;
+            window.__model = m;
             app.stage.addChild(model);
             model.anchor.set(0.5, 0.5);
             resizeModel();

@@ -20,5 +20,9 @@
 			"Name": "LipSync",
 			"Ids": ["ParamMouthOpenY", "ParamMouthForm"]
 		}
+	],
+	"HitAreas": [
+		{ "id": "ArtMesh15", "name": "Head" },
+		{ "id": "ArtMesh32", "name": "Body" }
 	]
 }
