@@ -99,14 +99,20 @@ class CompanionWindow(QWidget):
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
         self._port = self._server.server_address[1]
         threading.Thread(target=self._server.serve_forever, daemon=True).start()
-        model_url = "/model/" + urllib.parse.quote("vvm.model3.json")
-        self.view.load(QUrl(f"http://127.0.0.1:{self._port}/web/index.html?model={model_url}"))
+        backend = self.config["companion"].get("avatar_backend", "sprite")
+        if backend == "live2d":
+            page = "index.html"
+            model_url = "/model/" + urllib.parse.quote("vvm.model3.json")
+            self.view.load(QUrl(f"http://127.0.0.1:{self._port}/web/{page}?model={model_url}"))
+        else:  # sprite（默认）：Petdex 精灵图
+            avatar = urllib.parse.quote("/web/sprite/pets/vivimi")
+            self.view.load(QUrl(f"http://127.0.0.1:{self._port}/web/sprite.html?avatar={avatar}"))
         QTimer.singleShot(6000, self._check_loaded)
 
     def _check_loaded(self) -> None:
         self.view.page().runJavaScript(
             "window.__modelLoaded ? 'loaded' : ('ERR:' + window.__loadError)",
-            lambda r: logger.info("Live2D %s", r),
+            lambda r: logger.info("avatar %s", r),
         )
 
     # ------------------------------------------------------------ JS bridge
