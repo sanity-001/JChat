@@ -47,7 +47,7 @@ var oneShot = null;   // {row, frames, done} 一次性动画（playTail 等）
 var rect = { x: 0, y: 0, w: 0, h: 0 }; // 绘制区（命中区按此缩放）
 var frameIdx = 0;
 var dragDir = null;   // 'left' | 'right' | null（拖动时播跑动动画并镜像）
-var FACE = 1;         // 素材默认朝向：1=朝右。若跑动方向反了改成 -1
+var FACE = -1;        // 素材默认朝向：1=朝右。实测反了 → -1（朝左）
 
 function curRow() {
     if (oneShot) return ROWS[oneShot.row];
@@ -66,7 +66,7 @@ function layout() {
     rect.w = FRAME_W * s;
     rect.h = FRAME_H * s;
     rect.x = (window.innerWidth - rect.w) / 2;
-    rect.y = window.innerHeight - rect.h - 4;
+    rect.y = window.innerHeight - rect.h - 56; // 底部预留输入框高度，避免遮挡腿部
 }
 window.addEventListener('resize', layout);
 
