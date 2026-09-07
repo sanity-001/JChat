@@ -25,6 +25,10 @@ class AgentMemory:
         self.working_window = working_window
         self.decay_rate = decay_rate
         self.staging: list[dict] = []
+        from JChat.memory.semantic import SemanticMemoryIndex
+
+        self._sem = SemanticMemoryIndex()
+        self._sem_dirty = True
 
     # ------------------------------------------------------------------ write
     def remember(self, content: str, entity_names: list[str] | None = None, importance: float = 3.0) -> str:
@@ -38,6 +42,7 @@ class AgentMemory:
             score=self._score(importance=importance, access_count=0),
         )
         self.staging.append({"memory_id": memory_id, "content": content})
+        self._sem_dirty = True
         if len(self.staging) > self.working_window:
             self.staging.pop(0)
         return memory_id
@@ -56,16 +61,26 @@ class AgentMemory:
 
     # ------------------------------------------------------------------- read
     def recall(self, query: str, k: int = 5) -> list[dict]:
-        """Rank memories by token-overlap with the query + entity link boost + recency."""
+        """混合检索：语义余弦（0.6，可用时）+ token 重叠（0.4）+ 实体链接加分。"""
         q_tokens = set(tokenize(query))
         candidates = [
             self._enrich(m) for m in self.store.list_memories() if m["scope"] != "summary"
         ]
+        sem_scores: dict[str, float] = {}
+        if self._sem_dirty:
+            self._sem.rebuild([(m["memory_id"], m["content"]) for m in candidates])
+            self._sem_dirty = False
+        if self._sem.available():
+            sem_scores = dict(self._sem.top(query, k=len(candidates) or 1))
         scored: list[dict] = []
         q_entities = _entity_tokens(query)
         for m in candidates:
             content_tokens = set(tokenize(m["content"]))
-            sim = _overlap(q_tokens, content_tokens)
+            overlap = _overlap(q_tokens, content_tokens)
+            sim = overlap
+            if m["memory_id"] in sem_scores:
+                cos01 = (sem_scores[m["memory_id"]] + 1) / 2  # [-1,1] → [0,1]
+                sim = 0.6 * cos01 + 0.4 * overlap
             if q_entities:
                 shared_entities = sum(1 for e in m["entities"] if _contains(e.lower(), query.lower()))
                 sim += 0.3 * shared_entities
