@@ -19,6 +19,12 @@ from JChat.memory.vector import tokenize
 
 logger = logging.getLogger("JChat.extractor")
 
+
+def _jaccard(a: set, b: set) -> float:
+    if not a or not b:
+        return 0.0
+    return len(a & b) / len(a | b)
+
 _SYSTEM = """你是用户的桌面搭子小J。你即将把一段刚发生的对话整理成长期记忆。
 以你自己的第一人称视角、带感情但精简地提炼。
 逐轮检查对话中的每个信息点，以下类型都要考虑（通常每段对话至少有 1-3 条）：
@@ -29,6 +35,10 @@ _SYSTEM = """你是用户的桌面搭子小J。你即将把一段刚发生的对
 ⑤ 用户在做的事与目标（项目、学习、计划）
 ⑥ 你了解到的世界知识
 
+【重要】只记"长期有效"的事实，以下不属于记忆：
+- 当日临时状态（今天吃了什么、今天累不累、当下心情、此刻在做的事）
+- 一次性计划（今晚想吃什么、今天打算去哪）——除非用户明示"记住"
+
 只输出 JSON，不要任何解释。结构如下：
 {"facts": [{"content": "以“用户…”开头的一句话事实",
             "importance": 1-10, "entities": ["可关联的实体名（可选）"]}],
@@ -38,10 +48,11 @@ _SYSTEM = """你是用户的桌面搭子小J。你即将把一段刚发生的对
 - 用户说"我叫小明" → {"content": "用户名叫小明", "importance": 9}
 - 用户说"我讨厌香菜" → {"content": "用户讨厌吃香菜", "importance": 7}
 - 用户说"我每周三加班到十点" → {"content": "用户每周三晚上加班到十点", "importance": 7}
+- 用户说"今天中午吃了牛肉面" → 不抽（当日临时状态）
 只抽取对话中明确陈述的内容；琐碎寒暄不抽；facts 只抽关于用户的，relations 只抽世界知识。
 宁可少而准，不要多而杂。"""
 
-_USER = """已有记忆（与这些重复或同义的不要输出）：
+_USER = """已有记忆（重要：与这些记忆讲同一件事的，即使措辞完全不同，也绝对不要重复输出）：
 {existing}
 
 对话记录：
@@ -79,8 +90,9 @@ def extract_session(
 
     lines = [f"{m['role']}: {m['content']}" for m in transcript]
     transcript_text = "\n".join(lines)
-    existing = memory.recall(transcript_text[:300], k=12) if memory else []
-    existing_txt = "\n".join(f"- {m['content']}" for m in existing) or "（暂无）"
+    # 现有记忆全量携带（≤100 条）：跨批次判重 + 措辞对齐；规模测试 58 条 ≈ 900 token 可接受
+    all_mem = [m for m in memory.state() if m.get("scope") != "summary"][:100] if memory else []
+    existing_txt = "\n".join(f"- {m['content']}" for m in all_mem) or "（暂无）"
     try:
         resp = llm.chat(
             [
@@ -109,10 +121,16 @@ def extract_session(
         importance = float(fact.get("importance", 0) or 0)
         if importance < importance_floor:
             continue
-        existing = memory.recall(content, k=5)
+        fact_tokens = set(tokenize(content))
+        existing_contents = [m["content"] for m in all_mem]
         dup = False
-        for old in existing:
-            if _overlap(set(tokenize(old["content"])), set(tokenize(content))) >= threshold:
+        for old in existing_contents:
+            old_tokens = set(tokenize(old))
+            # 双保险：字面重合（原有）或 token Jaccard（措辞漂移时兜底）
+            if (
+                _overlap(fact_tokens, old_tokens) >= threshold
+                or _jaccard(fact_tokens, old_tokens) >= 0.4
+            ):
                 dup = True
                 break
         if dup:
