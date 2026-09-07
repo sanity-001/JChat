@@ -170,7 +170,7 @@ class App(QObject):
         """AI 状态联动：回复后 开心/难过，说话口型 5s，之后回 idle。"""
         if self.companion is None:
             return
-        self.companion.set_expression("sad" if failed else "happy")
+        self.companion.set_expression("crying" if failed else "happy")
         self.companion.set_talking(True)
 
         def calm() -> None:

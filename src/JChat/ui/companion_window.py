@@ -185,8 +185,7 @@ class CompanionWindow(QWidget):
                 self._js("bounce()")
                 self._js(f"setBubble({json.dumps(random.choice(POKE_TEXT))}, [])")
         elif t == "combo":
-            self.set_expression("happy")
-            self._js("playTail()")
+            self.set_expression("dark")
             self._js("bounce()")
             self._js(f"setBubble({json.dumps(random.choice(COMBO_TEXT))}, [])")
         elif t == "drag":

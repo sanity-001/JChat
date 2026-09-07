@@ -28,7 +28,58 @@ function _setRaw(id, value) {
     if (i >= 0) model.internalModel.coreModel._parameterValues[i] = value;
 }
 
-// ---------------- 表情预设（vtube.json 参数映射校准后） ----------------
+// ---------------- 覆盖层素材（Pixi Graphics，位于 app.stage，屏幕坐标） ----------------
+var cryLayer = null, darkLayer = null;
+
+function _buildOverlays() {
+    if (!model || cryLayer || !app) return;
+    // 哭：眼睛下方两道血泪（橙红渐变泪痕）——眼位实测约 (232,394)(266,394)
+    cryLayer = new PIXI.Container();
+    var g = new PIXI.Graphics();
+    [[232, 403], [266, 403]].forEach(function (p) {
+        g.beginFill(0xff7f4f, 0.65);
+        g.drawEllipse(p[0], p[1] + 3, 2.0, 7.5);
+        g.endFill();
+        g.beginFill(0xe0453a, 0.9);
+        g.drawEllipse(p[0], p[1] + 15, 2.4, 3.4);
+        g.endFill();
+        g.beginFill(0xffb07f, 0.95);
+        g.drawEllipse(p[0], p[1] + 11, 1.0, 2.0);
+        g.endFill();
+    });
+    cryLayer.addChild(g);
+    cryLayer.visible = false;
+    app.stage.addChild(cryLayer);
+
+    // 黑化：头顶两侧黑尖角 + 双眼暗紫灰渐变罩（眼位同左）
+    darkLayer = new PIXI.Container();
+    var h = new PIXI.Graphics();
+    [[192, 332, -1], [292, 332, 1]].forEach(function (s) {
+        var bx = s[0], by = s[1], dir = s[2];
+        h.beginFill(0x181818, 0.96);
+        h.moveTo(bx - 9 * dir, by);
+        h.lineTo(bx, by - 20);
+        h.lineTo(bx + 6 * dir, by - 7);
+        h.lineTo(bx + 11 * dir, by + 2);
+        h.endFill();
+    });
+    darkLayer.addChild(h);
+    var e = new PIXI.Graphics();
+    e.beginFill(0x3a2a3a, 0.5);
+    e.drawEllipse(232, 395, 14, 10);
+    e.drawEllipse(266, 395, 14, 10);
+    e.endFill();
+    darkLayer.addChild(e);
+    darkLayer.visible = false;
+    app.stage.addChild(darkLayer);
+}
+
+function _syncOverlays() {
+    if (cryLayer) cryLayer.visible = (expr === 'crying');
+    if (darkLayer) darkLayer.visible = (expr === 'dark');
+}
+
+
 var PRESETS = {
     idle: {},
     happy: { ParamMouthOpenY: 0.5, ParamMouthForm: 1, ParamEyeLOpen: 0.8, ParamEyeROpen: 0.8 },
@@ -40,6 +91,10 @@ var PRESETS = {
     tongue: { Param158: 1, ParamMouthOpenY: 0.3 },
     sleepy: { ParamEyeLOpen: 0.45, ParamEyeROpen: 0.45, ParamMouthForm: 0.2 },
     talk: { ParamMouthOpenY: 0.6, ParamMouthForm: 0.3 },
+    crying: { ParamMouthOpenY: 0.2, ParamEyeLOpen: 0.5, ParamEyeROpen: 0.5,
+              ParamEyeBallY: -0.5, ParamCheek: 0.5 },
+    dark: { ParamBrowLAngle: 1, ParamBrowRAngle2: 1, ParamMouthOpenY: 0.3,
+            ParamEyeLOpen: 0.9, ParamEyeROpen: 0.9 },
 };
 
 // 情绪尾巴：motion 管理器在此核心缺失 API 无法生效，改为数组直写实现"伸出-收回"摇尾节奏
@@ -78,7 +133,10 @@ function setExpression(name) {
     Object.keys(next).forEach(function (id) { _setRaw(id, next[id]); });
     if (name === 'happy') playTail();
     expr = name;
+    _buildOverlays();
+    _syncOverlays();
 }
+window.__setExpr = setExpression;
 
 function setTalking(on) {
     talking = !!on;
