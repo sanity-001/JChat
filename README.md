@@ -14,8 +14,10 @@
 
 ## 演示
 
-<img src="screenshots/demo-companion.gif" width="400" alt="形象交互：点击/拖动/表情反馈">  <img src="screenshots/demo-gomoku.gif" width="400" alt="和伙伴一起玩五子棋">
-
+| 形象交互 | 一起玩五子棋 |
+|:---:|:---:|
+| <img src="screenshots/demo-companion.gif" width="200"> | <img src="screenshots/demo-gomoku.gif" width="440"> |
+| 戳呆毛/尾巴/头/身各有专属反应，拖拽会朝对应方向跑动，对话时表情全程联动 | 说“来一局五子棋”即可开局；她边下边用角色口吻点评局势，赢了欢呼、输了委屈 |
 
 ## 运行
 
