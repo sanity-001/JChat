@@ -32,7 +32,6 @@ def md_to_html(text: str, body_font: str = "") -> str:
     i = 0
     in_code = False
     code_buf: list[str] = []
-    code_lang = ""
     list_stack: list[str] = []  # 'ul' | 'ol'
 
     def close_list() -> None:
