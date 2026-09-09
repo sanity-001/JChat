@@ -121,13 +121,20 @@ class VoiceController(QObject):
             from pypinyin import lazy_pinyin
 
             wp = "".join(lazy_pinyin(wake))
+            wake_last = lazy_pinyin(wake)[-1]  # 尾音节对齐："喂喂你"(ni)≠"维维美"(mei)
             max_cut = min(len(text), len(wake) + 3)
             fuzzy_best = None
             for cut in range(1, max_cut + 1):
-                head = "".join(lazy_pinyin(text[:cut]))
+                head_list = lazy_pinyin(text[:cut])
+                head = "".join(head_list)
                 if head == wp:  # 同音精确：优先
                     return text[cut:].strip()
-                if fuzzy_best is None and difflib.SequenceMatcher(None, wp, head).ratio() >= 0.8:
+                if (
+                    fuzzy_best is None
+                    and head_list
+                    and difflib.SequenceMatcher(None, wp, head).ratio() >= 0.8
+                    and head_list[-1] == wake_last  # 尾音节必须对上，防"喂喂你"误剥
+                ):
                     fuzzy_best = cut  # 记录最长（最后一个）近音切分
             if fuzzy_best is not None:
                 return text[fuzzy_best:].strip()

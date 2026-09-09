@@ -37,6 +37,13 @@ def tts_text(text: str) -> str:
     return text
 
 
+def _unique_path(ext: str) -> str:
+    """唯一临时文件名：QMediaPlayer 可能仍占用上一个文件（Permission denied 根因）。"""
+    import time
+
+    return os.path.join(tempfile.gettempdir(), f"jchat_tts_{int(time.time() * 1000)}.{ext}")
+
+
 def speak_gptsovits(
     text: str,
     base_url: str,
@@ -57,7 +64,7 @@ def speak_gptsovits(
         timeout=timeout,
     )
     resp.raise_for_status()
-    path = os.path.join(tempfile.gettempdir(), "jchat_tts.wav")
+    path = _unique_path("wav")
     with open(path, "wb") as fh:
         fh.write(resp.content)
     return path
@@ -78,7 +85,7 @@ def speak_edge(text: str, voice: str = "zh-CN-XiaoyiNeural", rate: str = "+10%")
         return bytes(buf)
 
     data = asyncio.run(_run())
-    path = os.path.join(tempfile.gettempdir(), "jchat_tts.mp3")
+    path = _unique_path("mp3")
     with open(path, "wb") as fh:
         fh.write(data)
     return path
