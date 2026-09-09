@@ -64,6 +64,7 @@ class App(QObject):
             )
         except Exception as e:  # noqa: BLE001
             logger.warning("语音热键注册失败：%s", e)
+        self.voice.ensure_monitor()
         self.window_msgs: list[dict] = []
         self.chat_window: ChatWindow | None = None
         self.companion: CompanionWindow | None = None
@@ -307,6 +308,7 @@ class App(QObject):
             return
         dlg = SettingsDialog(self.config, self.memory, parent=self.companion)
         if dlg.exec():
+            self.voice.ensure_monitor()  # 唤醒模式开关即时生效
             logger.info("设置已保存")
 
     # ------------------------------------------------------------ proactive

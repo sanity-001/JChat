@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 
 from PySide6.QtCore import QObject, QUrl, Signal
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
@@ -26,11 +27,25 @@ class VoiceController(QObject):
         self.app = app
         self.recorder = Recorder()
         self._asr = None
+        self._asr_lock = threading.Lock()
+        from JChat.voice.monitor import VoiceMonitor
+
+        self.monitor = VoiceMonitor(self)
         self._player = QMediaPlayer(self)
         self._audio_out = QAudioOutput(self)
         self._player.setAudioOutput(self._audio_out)
         self._player.mediaStatusChanged.connect(self._on_media_status)
         self._audio_out.setVolume(0.9)
+        self._playing = False
+
+    def ensure_monitor(self) -> None:
+        """唤醒模式开关时同步监听状态（配置变更后需重启或重开设置生效）。"""
+        c = self.config["companion"]
+        want = bool(c.get("voice_wake_enabled")) and bool(c.get("voice_enabled"))
+        if want and not self.monitor.running():
+            self.monitor.start()
+        elif not want and self.monitor.running():
+            self.monitor.stop()
 
     # ------------------------------------------------------------ 听（toggle）
     def toggle(self) -> None:
@@ -42,7 +57,11 @@ class VoiceController(QObject):
             self._mic_ui(False)
             if samples:
                 self.app.queue.submit(0, lambda: self._transcribe_worker(samples))
+            if self.monitor and bool(self.config["companion"].get("voice_wake_enabled")):
+                self.monitor.start()  # 录音时暂停的监听恢复
             return
+        if self.monitor.running():
+            self.monitor.stop()  # 按键录音与常驻监听互斥，避免双份收音
         self.stop_speaking()
         if not self.recorder.start():
             logger.warning("录音启动失败（sounddevice 未安装或无麦克风）")
@@ -50,21 +69,25 @@ class VoiceController(QObject):
             self._mic_ui(True)
             logger.info("录音中…（再按 %s 结束）", self.config["companion"].get("voice_hotkey"))
 
-    def _mic_ui(self, on: bool) -> None:
-        """录音状态反映到麦克风按钮（toggle 可能来自键盘线程，转 GUI）。"""
-        self.app.ui_task.emit(
-            lambda: getattr(self.app.companion, "set_mic_recording", lambda _o: None)(on)
-        )
-
-    def _transcribe_worker(self, samples: list[int]) -> None:
+    def _transcribe_worker(self, samples: list[int], from_monitor: bool = False) -> None:
         if self._asr is None:
             from JChat.voice.asr import SenseVoiceASR
 
             self._asr = SenseVoiceASR()
-        text = self._asr.transcribe(samples)
+        with self._asr_lock:
+            text = self._asr.transcribe(samples)
         logger.info("识别结果：%r", text)
-        if text:
-            self.app.ui_task.emit(lambda: self.app.on_send(text, via="voice"))
+        if not text:
+            return
+        if from_monitor:
+            c = self.config["companion"]
+            wake = str(c.get("voice_wake_word", "")).strip()
+            if wake and wake not in text:
+                return  # 未喊唤醒词：忽略（电视/自言自语不触发）
+            text = text.replace(wake, "", 1).strip() if wake else text
+            if not text:
+                return
+        self.app.ui_task.emit(lambda: self.app.on_send(text, via="voice"))
 
     # ------------------------------------------------------------ 说（TTS）
     def speak(self, text: str) -> None:
@@ -101,6 +124,9 @@ class VoiceController(QObject):
         self.app.ui_task.emit(lambda: self._play(path))
 
     # ------------------------------------------------------------ 播放（GUI 线程）
+    def is_playing(self) -> bool:
+        return self._playing
+
     def stop_speaking(self) -> None:
         """打断（barge-in）：停止当前播放。任意线程可调。"""
         self.app.ui_task.emit(self._stop_player)
@@ -108,6 +134,7 @@ class VoiceController(QObject):
     def _stop_player(self) -> None:
         if self._player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
             self._player.stop()
+            self._playing = False
             companion = self.app.companion
             if companion:
                 companion.set_talking(False)
@@ -116,13 +143,18 @@ class VoiceController(QObject):
         companion = self.app.companion
         if companion:
             companion.set_talking(True)
+        self._playing = True
         self._player.setSource(QUrl.fromLocalFile(path))
         self._player.play()
 
     def _on_media_status(self, status) -> None:
         from PySide6.QtMultimedia import QMediaPlayer
 
-        if status == QMediaPlayer.MediaStatus.EndOfMedia:
+        if status in (
+            QMediaPlayer.MediaStatus.EndOfMedia,
+            QMediaPlayer.MediaStatus.InvalidMedia,
+        ):
+            self._playing = False
             companion = self.app.companion
             if companion:
                 companion.set_talking(False)

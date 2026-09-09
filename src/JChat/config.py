@@ -49,6 +49,9 @@ DEFAULT_CONFIG: dict = {
         "voice_ref_text": "",
         "gptsovits_url": "http://127.0.0.1:9880",
         "tts_fallback_voice": "zh-CN-XiaoyiNeural",
+        "voice_wake_enabled": False,
+        "voice_wake_word": "维维美",
+        "voice_rms_threshold": 0.01,
         "proactive_min": 10,
         "proactive_max": 30,
         "quiet_hours_start": 23,
@@ -150,6 +153,7 @@ def _sanitize(cfg: dict) -> dict:
     check("companion", "avatar_scale", (int, float))
     for key in ("random_walk", "random_chat", "voice_enabled"):
         check("companion", key, bool)
+    check("companion", "voice_rms_threshold", (int, float))
     for key in ("width", "height", "proactive_min", "proactive_max", "quiet_hours_start",
                 "quiet_hours_end", "reply_ttl_seconds"):
         check("companion", key, int)

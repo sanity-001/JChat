@@ -160,6 +160,12 @@ class GameDialog(QDialog):
         root.addLayout(side)
 
     # ------------------------------------------------------------ 落子流程
+    def _say(self, text: str) -> None:
+        """游戏台词走语音（开启语音时）。"""
+        c = self.controller
+        if c.config["companion"].get("voice_enabled") and c.llm is not None:
+            c.queue.submit(1, lambda: c.voice.speak(text))
+
     def _on_user_move(self, col: int, row: int) -> None:
         if not self.g.place(col, row, 1):
             return
@@ -223,6 +229,7 @@ class GameDialog(QDialog):
         self.board_view.update()
         if quip:
             self.bubble.setText(quip)
+            self._say(quip)
         if self.g.check_win(col, row):
             self._end(user_win=False)
             return
@@ -235,15 +242,18 @@ class GameDialog(QDialog):
         if user_win is True:
             self._user_wins += 1
             self.bubble.setText("呜……你赢了！算你厉害，下局我一定翻盘！")
+            self._say("呜……你赢了！算你厉害，下局我一定翻盘！")
             if companion:
                 companion.flash_expression("sad")
         elif user_win is False:
             self._ai_wins += 1
             self.bubble.setText("嘻嘻嘻，本小姐赢啦！奖励你一颗烤土豆～")
+            self._say("嘻嘻嘻，本小姐赢啦！奖励你一颗烤土豆～")
             if companion:
                 companion.flash_expression("celebrate")
         else:
             self.bubble.setText("平局……下局不许放水！")
+            self._say("平局……下局不许放水！")
         self.score.setText(f"比分  你 {self._user_wins} : {self._ai_wins} 她")
 
     def _restart(self) -> None:

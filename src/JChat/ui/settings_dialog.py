@@ -75,6 +75,16 @@ class SettingsDialog(QDialog):
         vgrid.addWidget(QLabel("兜底音色"), 4, 0)
         self.tts_fallback = QLineEdit(c.get("tts_fallback_voice", "zh-CN-XiaoyiNeural"))
         vgrid.addWidget(self.tts_fallback, 4, 1)
+        self.wake_chk = QCheckBox("免提模式（常驻监听，说话需先喊唤醒词）")
+        self.wake_chk.setChecked(c.get("voice_wake_enabled", False))
+        root.addWidget(self.wake_chk)
+        vgrid.addWidget(QLabel("唤醒词"), 5, 0)
+        self.wake_word = QLineEdit(c.get("voice_wake_word", "维维美"))
+        vgrid.addWidget(self.wake_word, 5, 1)
+        vgrid.addWidget(QLabel("收音灵敏度"), 6, 0)
+        self.rms_threshold = QLineEdit(str(c.get("voice_rms_threshold", 0.01)))
+        self.rms_threshold.setPlaceholderText("RMS 阈值 0.01（太灵改大，听不见改小）")
+        vgrid.addWidget(self.rms_threshold, 6, 1)
         root.addLayout(vgrid)
 
         # ---- 记忆管理
@@ -142,5 +152,11 @@ class SettingsDialog(QDialog):
         c["voice_ref_text"] = self.voice_ref_text.text().strip()
         c["gptsovits_url"] = self.gptsovits_url.text().strip()
         c["tts_fallback_voice"] = self.tts_fallback.text().strip()
+        c["voice_wake_enabled"] = self.wake_chk.isChecked()
+        c["voice_wake_word"] = self.wake_word.text().strip()
+        try:
+            c["voice_rms_threshold"] = float(self.rms_threshold.text().strip() or 0.01)
+        except ValueError:
+            c["voice_rms_threshold"] = 0.01
         self.config["llm"]["api_key"] = self.api_key.text()
         self.accept()
