@@ -213,6 +213,8 @@ input.addEventListener('focus', function () {
     if (collapseTimer) clearTimeout(collapseTimer);
     showOverlay();
 });
+var micBtn = document.getElementById('micBtn');
+if (micBtn) micBtn.addEventListener('click', function () { post({ type: 'mic' }); });
 input.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();

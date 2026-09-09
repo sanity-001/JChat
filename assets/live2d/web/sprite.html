@@ -31,8 +31,11 @@
         #bubble .output { display: none; background: #FFF6C9; color: #8A6D00; border-radius: 10px;
             padding: 6px 10px; font-size: 12px; margin-top: 6px; white-space: pre-wrap; }
         #inputArea { position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
-            width: 240px; }
-        #chatInput { width: 100%; box-sizing: border-box; background: #FFFFFF; color: #4A3F35;
+            width: 240px; display: flex; gap: 6px; }
+        #micBtn { width: 42px; border: 2px solid #FFD9E8; border-radius: 21px; background: #FFFFFF;
+            font-size: 16px; cursor: pointer; pointer-events: auto; }
+        #micBtn:active { background: #FFE0EC; }
+        #chatInput { flex: 1; box-sizing: border-box; background: #FFFFFF; color: #4A3F35;
             border: 2px solid #FFD9E8; border-radius: 22px; padding: 10px 18px; font-size: 14px;
             outline: none; pointer-events: auto; }
         #chatInput:focus { border-color: #FFB6C9; }
@@ -42,7 +45,7 @@
     <canvas id="canvas"></canvas>
     <div id="overlay">
         <div id="bubbleArea"><div id="bubble"></div></div>
-        <div id="inputArea"><input id="chatInput" placeholder="说点什么…（Enter 发送）"></div>
+        <div id="inputArea"><button id="micBtn" title="按一下开始录音，再按结束">🎤</button><input id="chatInput" placeholder="说点什么…（Enter 发送）"></div>
     </div>
     <script src="sprite.js"></script>
 </body>

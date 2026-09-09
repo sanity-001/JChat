@@ -69,11 +69,12 @@ class CompanionWindow(QWidget):
     open_chat_requested = Signal()
     hover_collapsed = Signal()
 
-    def __init__(self, config: dict, on_settings=None, on_play_game=None):
+    def __init__(self, config: dict, on_settings=None, on_play_game=None, on_mic=None):
         super().__init__()
         self.config = config
         self.on_settings = on_settings
         self.on_play_game = on_play_game
+        self.on_mic = on_mic
         self.chat_window_open = False
         self.pending_proactive: str | None = None
         self.direction = random.choice([-1, 1])
@@ -233,6 +234,9 @@ class CompanionWindow(QWidget):
             self.menu.popup(QCursor.pos())
         elif t == "open_chat":
             self._menu_open_chat()
+        elif t == "mic":
+            if self.on_mic:
+                self.on_mic()
         elif t == "collapsed":
             self.hover_collapsed.emit()
 

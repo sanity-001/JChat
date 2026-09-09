@@ -43,6 +43,12 @@ DEFAULT_CONFIG: dict = {
         "width": 300,
         "height": 300,
         "shortcut_chat": "Ctrl+Alt+2",
+        "voice_enabled": False,
+        "voice_hotkey": "ctrl+alt+1",
+        "voice_ref_audio": "",
+        "voice_ref_text": "",
+        "gptsovits_url": "http://127.0.0.1:9880",
+        "tts_fallback_voice": "zh-CN-XiaoyiNeural",
         "proactive_min": 10,
         "proactive_max": 30,
         "quiet_hours_start": 23,
@@ -142,7 +148,7 @@ def _sanitize(cfg: dict) -> dict:
     for key in ("nickname", "icon", "persona", "shortcut_chat", "avatar_backend"):
         check("companion", key, str)
     check("companion", "avatar_scale", (int, float))
-    for key in ("random_walk", "random_chat"):
+    for key in ("random_walk", "random_chat", "voice_enabled"):
         check("companion", key, bool)
     for key in ("width", "height", "proactive_min", "proactive_max", "quiet_hours_start",
                 "quiet_hours_end", "reply_ttl_seconds"):
