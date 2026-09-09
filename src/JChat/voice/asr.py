@@ -60,6 +60,7 @@ class SenseVoiceASR:
         if self._failed:
             return False
         try:
+            self._preload_ort()  # 避免 sherpa 加载 PATH 上旧版 onnxruntime.dll
             import sherpa_onnx
 
             model, tokens = _ensure_model()
@@ -71,6 +72,24 @@ class SenseVoiceASR:
             logger.info("ASR 不可用：%s", e)
             self._failed = True
             return False
+
+    @staticmethod
+    def _preload_ort() -> None:
+        """Windows：把 pip onnxruntime（≥1.20）的 DLL 预加载进进程。
+
+        sherpa-onnx 的扩展请求 ORT C-API 27，但 DLL 搜索可能先命中 PATH 上
+        其他程序携带的旧版 onnxruntime.dll（如 Anaconda）——同名 DLL 先入为主。
+        """
+        import ctypes
+
+        try:
+            import onnxruntime
+
+            capi = Path(onnxruntime.__file__).parent / "capi" / "onnxruntime.dll"
+            if capi.exists():
+                ctypes.WinDLL(str(capi))
+        except Exception as e:  # noqa: BLE001
+            logger.info("ORT 预加载跳过：%s", e)
 
     def transcribe(self, samples_int16) -> str:
         import numpy as np
