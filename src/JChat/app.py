@@ -145,8 +145,8 @@ class App(QObject):
         self.through_hover = via in ("hover", "voice")
         self.voice_turn = via == "voice"
         self._session_timer.stop()
-        if self.voice_turn:
-            self.voice.stop_speaking()  # barge-in：语音输入打断当前播放
+        if self.config["companion"].get("voice_enabled"):
+            self.voice.stop_speaking()  # barge-in：任何新输入打断当前播放
         if via == "big" and self.chat_window:
             self.chat_window.add_user_message(text)
         self.history.add("user", text)
@@ -201,8 +201,9 @@ class App(QObject):
                 self.companion.show_reply(reply, events)
                 self._apply_ai_face(failed, tools_used)
                 self._arm_session_end()
-                if self.voice_turn:
-                    self.voice.speak(reply)
+                if self.config["companion"].get("voice_enabled"):
+                    # TTS 网络合成在 worker 线程，避免卡 UI
+                    self.queue.submit(1, lambda: self.voice.speak(reply))
             elif self.chat_window:
                 for i, ev in enumerate(events):
                     card = card_refs.get(i)
@@ -212,6 +213,8 @@ class App(QObject):
                 self._finish_turn(reply)
                 if self.companion:
                     self._apply_ai_face(failed, tools_used)
+                if self.config["companion"].get("voice_enabled"):
+                    self.queue.submit(1, lambda: self.voice.speak(reply))
 
         self.ui_task.emit(finish)
 
@@ -386,7 +389,10 @@ def main() -> None:
 
     controller = App(config)
     companion = CompanionWindow(
-        config, on_settings=controller.open_settings, on_play_game=controller.open_game
+        config,
+        on_settings=controller.open_settings,
+        on_play_game=controller.open_game,
+        on_mic=controller.voice.toggle,
     )
     controller.attach_companion(companion)
     companion.show()
