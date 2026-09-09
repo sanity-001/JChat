@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import os
-
 import logging
+import os
 import random
 import sys
 from datetime import datetime
