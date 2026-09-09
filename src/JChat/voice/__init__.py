@@ -39,6 +39,7 @@ class VoiceController(QObject):
             return
         if self.recorder.recording():
             samples = self.recorder.stop()
+            self._mic_ui(False)
             if samples:
                 self.app.queue.submit(0, lambda: self._transcribe_worker(samples))
             return
@@ -46,7 +47,14 @@ class VoiceController(QObject):
         if not self.recorder.start():
             logger.warning("录音启动失败（sounddevice 未安装或无麦克风）")
         else:
+            self._mic_ui(True)
             logger.info("录音中…（再按 %s 结束）", self.config["companion"].get("voice_hotkey"))
+
+    def _mic_ui(self, on: bool) -> None:
+        """录音状态反映到麦克风按钮（toggle 可能来自键盘线程，转 GUI）。"""
+        self.app.ui_task.emit(
+            lambda: getattr(self.app.companion, "set_mic_recording", lambda _o: None)(on)
+        )
 
     def _transcribe_worker(self, samples: list[int]) -> None:
         if self._asr is None:

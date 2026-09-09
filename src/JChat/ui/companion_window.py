@@ -156,6 +156,10 @@ class CompanionWindow(QWidget):
     def set_gaze(self, on: bool) -> None:
         self._js(f"setGaze({str(on).lower()})")
 
+    def set_mic_recording(self, on: bool) -> None:
+        """麦克风按钮录音状态反馈（红色脉冲 ⏺）。"""
+        self._js(f"setMicRecording({str(bool(on)).lower()})")
+
     def set_chat_window_open(self, open_: bool) -> None:
         self.chat_window_open = open_
         self._js(f"setOverlayVisible({str(not open_).lower()})")

@@ -35,6 +35,9 @@
         #micBtn { width: 42px; border: 2px solid #FFD9E8; border-radius: 21px; background: #FFFFFF;
             font-size: 16px; cursor: pointer; pointer-events: auto; }
         #micBtn:active { background: #FFE0EC; }
+        #micBtn.rec { background: #FFB6C9; border-color: #FF7A9E; color: #B03060; font-size: 13px;
+            animation: micpulse 1s ease-in-out infinite; }
+        @keyframes micpulse { 50% { transform: scale(1.12); box-shadow: 0 0 8px #FF7A9E; } }
         #chatInput { flex: 1; box-sizing: border-box; background: #FFFFFF; color: #4A3F35;
             border: 2px solid #FFD9E8; border-radius: 22px; padding: 10px 18px; font-size: 14px;
             outline: none; pointer-events: auto; }

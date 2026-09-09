@@ -215,6 +215,11 @@ input.addEventListener('focus', function () {
 });
 var micBtn = document.getElementById('micBtn');
 if (micBtn) micBtn.addEventListener('click', function () { post({ type: 'mic' }); });
+window.setMicRecording = function (on) {
+    if (!micBtn) return;
+    micBtn.classList.toggle('rec', !!on);
+    micBtn.textContent = on ? '⏺' : '🎤';
+};
 input.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
