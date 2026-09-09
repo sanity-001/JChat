@@ -88,12 +88,56 @@ class VoiceController(QObject):
         if from_monitor:
             c = self.config["companion"]
             wake = str(c.get("voice_wake_word", "")).strip()
-            if wake and wake not in text:
-                return  # 未喊唤醒词：忽略（电视/自言自语不触发）
-            text = text.replace(wake, "", 1).strip() if wake else text
-            if not text:
+            rest = self._strip_wake(text, wake)
+            if rest is None:
+                return  # 未喊唤醒词
+            if rest == "":
+                # 只喊了唤醒词：确认"我在听"（不走 LLM）
+                logger.info("唤醒确认")
+                self.app.ui_task.emit(
+                    lambda: getattr(self.app.companion, "show_reply", lambda *_a: None)(
+                        "嗯，我在听。", []
+                    )
+                )
+                self.app.queue.submit(1, lambda: self.speak("嗯，我在听。"))
                 return
+            text = rest
         self.app.ui_task.emit(lambda: self.app.on_send(text, via="voice"))
+
+    @staticmethod
+    def _strip_wake(text: str, wake: str) -> str | None:
+        """唤醒词匹配（含同音字容错："维维美/唯唯美/微微美"）。
+
+        返回去掉唤醒词后的内容；未命中返回 None；只喊了唤醒词返回空串。
+        """
+        if not wake:
+            return text
+        if wake in text:
+            return text.replace(wake, "", 1).strip()
+        # 拼音同音：逐前缀切分比较（ASR 常把唤醒词写成同音/近音字）
+        try:
+            import difflib
+
+            from pypinyin import lazy_pinyin
+
+            wp = "".join(lazy_pinyin(wake))
+            max_cut = min(len(text), len(wake) + 3)
+            fuzzy_best = None
+            for cut in range(1, max_cut + 1):
+                head = "".join(lazy_pinyin(text[:cut]))
+                if head == wp:  # 同音精确：优先
+                    return text[cut:].strip()
+                if fuzzy_best is None and difflib.SequenceMatcher(None, wp, head).ratio() >= 0.8:
+                    fuzzy_best = cut  # 记录最长（最后一个）近音切分
+            if fuzzy_best is not None:
+                return text[fuzzy_best:].strip()
+        except ImportError:
+            pass
+        # 无 pypinyin：字符重叠兜底
+        head = text[: len(wake)]
+        if head and len(set(head) & set(wake)) / max(len(set(head) | set(wake)), 1) >= 0.6:
+            return text[len(wake):].strip()
+        return None
 
     # ------------------------------------------------------------ 说（TTS）
     def speak(self, text: str) -> None:
