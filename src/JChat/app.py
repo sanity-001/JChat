@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 import logging
 import random
 import sys
@@ -378,6 +380,7 @@ class App(QObject):
 
 
 def main() -> None:
+    os.environ.setdefault("QT_MEDIA_BACKEND", "windows")  # FFmpeg 后端对 24k mono mp3 重采样有 bug
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     logger.info("JChat %s 启动", __version__)
     ensure_default_configs()
