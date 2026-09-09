@@ -28,6 +28,7 @@ dependencies = [
 pdf = ["pypdf>=4.0"]
 embeddings = ["sentence-transformers>=2.6"]
 semantic = ["fastembed>=0.4"]
+voice = ["sherpa-onnx>=1.10", "edge-tts>=6.1", "sounddevice>=0.4"]
 dev = ["pytest>=8.0", "ruff>=0.4"]
 
 [build-system]
