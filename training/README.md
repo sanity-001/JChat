@@ -48,7 +48,7 @@ uv sync                       # 读其 pyproject 建独立 .venv 并装依赖（
 uv run llamafactory-cli version
 ```
 
-训练/导出（在 `LLaMA-Factory/` 目录内执行；配置路径相对项目根）：
+训练/导出（**必须在 `LLaMA-Factory/` 目录内执行**；yaml 内路径以其为基准，已写成 `..\data`、`..\outputs`、`..\models`）：
 
 ```bash
 uv run llamafactory-cli train ..\training\llamafactory_sft_lora_1.7b.yaml
@@ -56,7 +56,7 @@ uv run llamafactory-cli train ..\training\llamafactory_dpo_1.7b.yaml
 uv run llamafactory-cli export ..\training\llamafactory_sft_lora_1.7b.yaml   # 合并适配器
 ```
 
-> 基座权重走本地路径：把 yaml 里的 `model_name_or_path` 改为 `..\models\Qwen3-1.7B`（避免训练时联网下载）。
+> ⚠️ 坑：LLaMA-Factory 的 `dataset_dir`/`output_dir` 相对**它自己的工作目录**解析——所以 yaml 里已显式写成 `..\data`、`..\outputs\...`，且命令必须在 `LLaMA-Factory/` 内执行，否则产物会落到工具目录里。
 
 ## 数据配方（见票据 004）
 

@@ -3,7 +3,7 @@
 ### 用法：llamafactory-cli train training/llamafactory_sft_lora_1.7b.yaml
 
 ### model
-model_name_or_path: Qwen/Qwen3-1.7B
+model_name_or_path: ..\models\Qwen3-1.7B
 quantization_bit: 4
 trust_remote_code: true
 
@@ -18,6 +18,7 @@ lora_target: all
 
 ### dataset（data/dataset_info.json 中注册 persona_v1）
 dataset: persona_v1
+dataset_dir: ..\data
 template: qwen3
 cutoff_len: 2048
 max_samples: 100000
@@ -25,7 +26,7 @@ overwrite_cache: true
 preprocessing_num_workers: 4
 
 ### output
-output_dir: outputs/qwen3-1.7b-lora-persona
+output_dir: ..\outputs\qwen3-1.7b-lora-persona
 logging_steps: 10
 save_steps: 200
 plot_loss: true
