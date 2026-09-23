@@ -38,21 +38,25 @@ JChat 侧：`config.json` → `llm.base_url = "http://127.0.0.1:8080/v1"`、`llm
 
 ## 微调（M2 / M4）
 
-LLaMA-Factory（Windows 原生支持）：
+LLaMA-Factory 放在**项目内**（`JChat/LLaMA-Factory/`，已 gitignore），用**独立环境**（训练栈会拉 torch，不污染 JChat 的 venv）：
 
 ```bash
-git clone https://github.com/hiyouga/LLaMA-Factory.git
-cd LLaMA-Factory && uv pip install -e .
+cd D:\MyCode\JChat
+git clone --depth 1 https://github.com/hiyouga/LLaMA-Factory.git
+cd LLaMA-Factory
+uv sync                       # 读其 pyproject 建独立 .venv 并装依赖（含 CUDA 版 torch，~3GB）
+uv run llamafactory-cli version
 ```
 
-- SFT（QLoRA 4bit）：`training/llamafactory_sft_lora_1.7b.yaml`
-- DPO：`training/llamafactory_dpo_1.7b.yaml`
+训练/导出（在 `LLaMA-Factory/` 目录内执行；配置路径相对项目根）：
 
 ```bash
-llamafactory-cli train training/llamafactory_sft_lora_1.7b.yaml
-llamafactory-cli train training/llamafactory_dpo_1.7b.yaml
-llamafactory-cli export training/llamafactory_sft_lora_1.7b.yaml   # 合并适配器
+uv run llamafactory-cli train ..\training\llamafactory_sft_lora_1.7b.yaml
+uv run llamafactory-cli train ..\training\llamafactory_dpo_1.7b.yaml
+uv run llamafactory-cli export ..\training\llamafactory_sft_lora_1.7b.yaml   # 合并适配器
 ```
+
+> 基座权重走本地路径：把 yaml 里的 `model_name_or_path` 改为 `..\models\Qwen3-1.7B`（避免训练时联网下载）。
 
 ## 数据配方（见票据 004）
 
