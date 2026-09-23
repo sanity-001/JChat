@@ -38,25 +38,25 @@ JChat 侧：`config.json` → `llm.base_url = "http://127.0.0.1:8080/v1"`、`llm
 
 ## 微调（M2 / M4）
 
-LLaMA-Factory 放在**项目内**（`JChat/LLaMA-Factory/`，已 gitignore），用**独立环境**（训练栈会拉 torch，不污染 JChat 的 venv）：
+LLaMA-Factory 放在**项目外**（如 `D:\Tool\LLaMA-Factory`），用**独立环境**（训练栈会拉 torch ~3GB，不污染 JChat 的 venv）：
 
 ```bash
-cd D:\MyCode\JChat
+cd D:\Tool
 git clone --depth 1 https://github.com/hiyouga/LLaMA-Factory.git
 cd LLaMA-Factory
 uv sync                       # 读其 pyproject 建独立 .venv 并装依赖（含 CUDA 版 torch，~3GB）
 uv run llamafactory-cli version
 ```
 
-训练/导出（**必须在 `LLaMA-Factory/` 目录内执行**；yaml 内路径以其为基准，已写成 `..\data`、`..\outputs`、`..\models`）：
+训练/导出（在任意目录执行均可——yaml 内为**绝对路径**）：
 
 ```bash
-uv run llamafactory-cli train ..\training\llamafactory_sft_lora_1.7b.yaml
-uv run llamafactory-cli train ..\training\llamafactory_dpo_1.7b.yaml
-uv run llamafactory-cli export ..\training\llamafactory_sft_lora_1.7b.yaml   # 合并适配器
+uv run llamafactory-cli train D:\MyCode\JChat\training\llamafactory_sft_lora_1.7b.yaml
+uv run llamafactory-cli train D:\MyCode\JChat\training\llamafactory_dpo_1.7b.yaml
+uv run llamafactory-cli export D:\MyCode\JChat\training\llamafactory_sft_lora_1.7b.yaml   # 合并适配器
 ```
 
-> ⚠️ 坑：LLaMA-Factory 的 `dataset_dir`/`output_dir` 相对**它自己的工作目录**解析——所以 yaml 里已显式写成 `..\data`、`..\outputs\...`，且命令必须在 `LLaMA-Factory/` 内执行，否则产物会落到工具目录里。
+> yaml 中 `model_name_or_path` / `dataset_dir` / `output_dir` 均为绝对路径（`D:/MyCode/JChat/...`）——工具与项目位置无关，也规避了 LLaMA-Factory「相对自身工作目录解析路径」的坑。**项目若搬家，需同步改这两份 yaml。**
 
 ## 数据配方（见票据 004）
 

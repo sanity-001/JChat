@@ -1,10 +1,10 @@
-### JChat 人设 DPO（Qwen3-1.7B + LoRA）
+﻿### JChat 人设 DPO（Qwen3-1.7B + LoRA）
 ### 依据：wayfinder 票据 004（DPO 200~400 对，beta 0.1）
 ### 用法：llamafactory-cli train training/llamafactory_dpo_1.7b.yaml
 
 ### model（在 SFT 适配器基础上继续）
-model_name_or_path: ..\models\Qwen3-1.7B
-adapter_name_or_path: ..\outputs\qwen3-1.7b-lora-persona
+model_name_or_path: D:/MyCode/JChat/models/Qwen3-1.7B
+adapter_name_or_path: D:/MyCode/JChat/outputs/qwen3-1.7b-lora-persona
 quantization_bit: 4
 trust_remote_code: true
 
@@ -20,13 +20,13 @@ pref_loss: sigmoid
 
 ### dataset（data/dataset_info.json 中注册 persona_dpo）
 dataset: persona_dpo
-dataset_dir: ..\data
+dataset_dir: D:/MyCode/JChat/data
 template: qwen3
 cutoff_len: 1024
 overwrite_cache: true
 
 ### output
-output_dir: ..\outputs\qwen3-1.7b-dpo-persona
+output_dir: D:/MyCode/JChat/outputs/qwen3-1.7b-dpo-persona
 logging_steps: 5
 save_steps: 100
 plot_loss: true
