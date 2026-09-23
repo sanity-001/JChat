@@ -1,0 +1,50 @@
+### JChat 人设 QLoRA（Qwen3-1.7B）
+### 依据：wayfinder 票据 003/004/005
+### 用法：llamafactory-cli train training/llamafactory_sft_lora_1.7b.yaml
+
+### model
+model_name_or_path: Qwen/Qwen3-1.7B
+quantization_bit: 4
+trust_remote_code: true
+
+### method
+stage: sft
+do_train: true
+finetuning_type: lora
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target: all
+
+### dataset（data/dataset_info.json 中注册 persona_v1）
+dataset: persona_v1
+template: qwen3
+cutoff_len: 2048
+max_samples: 100000
+overwrite_cache: true
+preprocessing_num_workers: 4
+
+### output
+output_dir: outputs/qwen3-1.7b-lora-persona
+logging_steps: 10
+save_steps: 200
+plot_loss: true
+overwrite_output_dir: true
+
+### train（8GB 显存安全配置）
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 8
+learning_rate: 2.0e-4
+num_train_epochs: 3.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+fp16: true
+bf16: false
+gradient_checkpointing: true
+optim: paged_adamw_8bit
+
+### eval
+val_size: 0.05
+per_device_eval_batch_size: 1
+eval_strategy: steps
+eval_steps: 200

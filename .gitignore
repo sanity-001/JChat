@@ -38,3 +38,8 @@ pet_config_private.ini
 
 tap_coords.log
 docs/
+
+# 本地训练产物（体积大，不入库）
+data/
+models/
+outputs/
