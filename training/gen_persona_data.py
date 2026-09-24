@@ -74,6 +74,14 @@ TOPICS = [
     "睡眠不好", "拖延症", "和朋友吵架", "换工作", "学英语", "理财", "整理房间", "追剧",
     "耳机推荐", "键盘手感", "跑步", "养花", "记账", "写周报", "开会", "面试准备", "做PPT",
     "手机内存不够", "想养狗", "学吉他", "熬夜", "点外卖", "咖啡", "体检", "搬东西", "修bug",
+    "换了新鼠标", "显示器亮度", "桌面乱", "备份文件", "升级系统", "清理缓存", "网速慢",
+    "充电器丢了", "坐姿不好", "肩膀酸痛", "中午吃什么", "泡面做法", "冰淇淋", "奶茶",
+    "周末去哪玩", "拍照", "剪视频", "写日记", "种多肉", "养金鱼", "拼乐高", "下象棋",
+    "打羽毛球", "学游泳", "爬山", "露营", "钓鱼", "看球赛", "追番", "听播客", "学做菜",
+    "大扫除", "换季衣服", "快递太多", "信用卡账单", "社保", "公积金", "搬家", "装修",
+    "买车", "考驾照", "学摄影", "练字", "背单词", "准备考试", "写论文", "做汇报",
+    "和同事相处", "带新人", "提需求", "改方案", "复盘", "找bug", "看日志", "写文档",
+    "定闹钟", "忘带钥匙", "失眠", "早起", "午睡", "喝水提醒", "久坐", "眼睛干",
 ]
 
 
@@ -195,6 +203,41 @@ def gen_tool(llm, schemas: list[dict], n_call: int, n_refuse: int, workers: int 
 
 
 # ------------------------------------------------------------ 导出
+def dedup(rows: list[dict], threshold: float = 0.85) -> list[dict]:
+    """近重复过滤。
+
+    - 工具调用样本：只按 (user + function_call) 精确键去重（多样性在参数里，不做相似度过滤）
+    - 普通对话：按 (user + gpt 回复) 相似度过滤
+    """
+    import difflib
+
+    kept: list[dict] = []
+    seen_users: set[str] = set()
+    tool_keys: set[str] = set()
+    sigs: list[str] = []
+    for r in rows:
+        conv = r["conversations"]
+        user = conv[0]["value"] if conv and conv[0]["from"] == "human" else ""
+        call = next((c["value"] for c in conv if c["from"] == "function_call"), None)
+        if call is not None:
+            key = f"{user} || {call}"
+            if key in tool_keys:
+                continue
+            tool_keys.add(key)
+            kept.append(r)
+            continue
+        if user in seen_users:
+            continue
+        core = conv[-1]["value"] if conv else ""
+        sig = f"{user} || {core}"
+        if any(difflib.SequenceMatcher(None, sig, s).ratio() >= threshold for s in sigs):
+            continue
+        seen_users.add(user)
+        sigs.append(sig)
+        kept.append(r)
+    return kept
+
+
 def write_jsonl(rows: list[dict], out: Path) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", encoding="utf-8") as fh:
@@ -219,8 +262,17 @@ def main() -> None:
     ap.add_argument("--n-tool", type=int, default=300)
     ap.add_argument("--n-refuse", type=int, default=100)
     ap.add_argument("--seeds-only", action="store_true")
+    ap.add_argument("--dedup-only", action="store_true", help="对已有 JSONL 做近重复过滤")
     ap.add_argument("--workers", type=int, default=4)
     args = ap.parse_args()
+
+    if args.dedup_only:
+        src = Path(args.out)
+        rows = [json.loads(line) for line in src.open(encoding="utf-8")]
+        kept = dedup(rows)
+        write_jsonl(kept, src)
+        print(f"去重: {len(rows)} → {len(kept)}（移除 {len(rows) - len(kept)} 条近重复）")
+        return
 
     rows = gen_seed()
     print(f"种子: {len(rows)} 条")
@@ -234,6 +286,8 @@ def main() -> None:
         tl = gen_tool(llm, tool_schemas(), args.n_tool, args.n_refuse, args.workers)
         print(f"工具: {len(tl)} 条")
         rows += rw + tl
+    rows = dedup(rows)
+    print(f"去重后: {len(rows)} 条")
     write_jsonl(rows, Path(args.out))
 
 
