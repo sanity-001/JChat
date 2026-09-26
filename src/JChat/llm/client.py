@@ -8,6 +8,14 @@ from typing import Any
 
 logger = logging.getLogger("JChat.llm")
 
+_FATAL_HINTS = ("not supported", "mmproj", "invalid_request_error", "does not support")
+
+
+def _is_fatal(err: Exception) -> bool:
+    """确定性错误（请求本身不被支持）不应重试。"""
+    text = str(err).lower()
+    return any(h in text for h in _FATAL_HINTS)
+
 
 class LLMClient:
     def __init__(self, cfg: dict):
@@ -60,6 +68,8 @@ class LLMClient:
             except Exception as e:  # noqa: BLE001 - 交给循环层决定
                 last_err = e
                 logger.warning("LLM 调用失败（%s/%s）：%s", attempt + 1, self.max_retry + 1, e)
+                if _is_fatal(e):
+                    break  # 确定性错误（如模型不支持某输入）重试无意义
                 time.sleep(2 * (attempt + 1))
         raise RuntimeError(f"LLM 调用失败（已重试 {self.max_retry} 次）：{last_err}")
 

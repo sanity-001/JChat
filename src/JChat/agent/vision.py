@@ -77,16 +77,23 @@ def analyse(path: str, prompt: str, llm) -> str:
     buf = io.BytesIO()
     img.convert("RGB").save(buf, "JPEG", quality=85)
     b64 = base64.b64encode(buf.getvalue()).decode()
-    resp = llm.chat(
-        [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
-                ],
-            }
-        ],
-        max_tokens=512,
-    )
+    resp = None
+    try:
+        resp = llm.chat(
+            [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
+                    ],
+                }
+            ],
+            max_tokens=512,
+        )
+    except Exception as e:  # noqa: BLE001
+        msg = str(e)
+        if "not supported" in msg or "mmproj" in msg:
+            return "（当前模型不支持视觉输入——本地纯文本模型无法看图，请换用支持视觉的模型配置）"
+        return f"（视觉分析失败：{type(e).__name__}）"
     return (resp["choices"][0]["message"]["content"] or "").strip()

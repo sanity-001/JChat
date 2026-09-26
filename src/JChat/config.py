@@ -117,14 +117,28 @@ def _read_json(path: Path) -> dict:
 
 
 def _env_fallback(cfg: dict) -> dict:
+    """环境变量优先于配置文件（便于无侵入切换本地/云端模型做对比评测）。
+
+    支持：JCHAT_API_KEY / JCHAT_BASE_URL / JCHAT_MODEL
+    （兼容旧名 MEMOKG_* 与 OPENAI_API_KEY）
+    """
     cfg = copy.deepcopy(cfg)
     llm = cfg["llm"]
-    if not llm.get("api_key"):
-        llm["api_key"] = os.getenv("MEMOKG_API_KEY") or os.getenv("OPENAI_API_KEY", "")
-    if not llm.get("base_url"):
-        llm["base_url"] = os.getenv("MEMOKG_BASE_URL") or DEFAULT_CONFIG["llm"]["base_url"]
-    if not llm.get("model"):
-        llm["model"] = os.getenv("MEMOKG_MODEL") or DEFAULT_CONFIG["llm"]["model"]
+    env_key = os.getenv("JCHAT_API_KEY") or os.getenv("MEMOKG_API_KEY") or os.getenv("OPENAI_API_KEY")
+    if env_key:
+        llm["api_key"] = env_key
+    elif not llm.get("api_key"):
+        llm["api_key"] = ""
+    env_base = os.getenv("JCHAT_BASE_URL") or os.getenv("MEMOKG_BASE_URL")
+    if env_base:
+        llm["base_url"] = env_base
+    elif not llm.get("base_url"):
+        llm["base_url"] = DEFAULT_CONFIG["llm"]["base_url"]
+    env_model = os.getenv("JCHAT_MODEL") or os.getenv("MEMOKG_MODEL")
+    if env_model:
+        llm["model"] = env_model
+    elif not llm.get("model"):
+        llm["model"] = DEFAULT_CONFIG["llm"]["model"]
     return cfg
 
 
