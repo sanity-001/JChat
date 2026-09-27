@@ -1,0 +1,8 @@
+### JChat LoRA 导出/合并配置（M2 → 部署产物）
+### 用法：llamafactory-cli export D:\MyCode\JChat\training\llamafactory_export_1.7b.yaml
+
+model_name_or_path: D:/MyCode/JChat/models/Qwen3-1.7B
+adapter_name_or_path: D:/MyCode/JChat/outputs/qwen3-1.7b-lora-persona
+template: qwen3
+trust_remote_code: true
+export_dir: D:/MyCode/JChat/outputs/qwen3-1.7b-merged

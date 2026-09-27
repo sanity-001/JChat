@@ -1,0 +1,8 @@
+### JChat 微调模型本地 API 服务（无需 GGUF，直接加载基座+LoRA）
+### 用法：llamafactory-cli api D:\MyCode\JChat\training\llamafactory_api_1.7b.yaml --api_port 8000
+
+model_name_or_path: D:/MyCode/JChat/models/Qwen3-1.7B
+adapter_name_or_path: D:/MyCode/JChat/outputs/qwen3-1.7b-lora-persona
+template: qwen3
+infer_backend: huggingface
+trust_remote_code: true
