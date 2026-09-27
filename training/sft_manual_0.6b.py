@@ -42,8 +42,11 @@ class PersonaDataset(Dataset):
         with path.open(encoding="utf-8") as fh:
             for line in fh:
                 row = json.loads(line)
+                # 跳过工具调用样本：其结尾回复是固定文案（"办好了，拿去用。"），
+                # 混入会导致模型把该句当万能回复（模式崩溃，实测教训）
+                if any(c["from"] in ("function_call", "observation") for c in row["conversations"]):
+                    continue
                 conv = [c for c in row["conversations"] if c["from"] in ("human", "gpt")]
-                # 只保留含 assistant 回复的普通对话（工具样本此处跳过，M2 已覆盖）
                 if len(conv) >= 2 and conv[-1]["from"] == "gpt":
                     self.items.append({"system": row.get("system", ""), "conv": conv})
 

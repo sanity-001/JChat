@@ -1,0 +1,37 @@
+### M5 蒸馏：Qwen3-0.6B 学生（LoRA on 教师生成的多轮验证数据）
+### 用法：llamafactory-cli train D:\MyCode\JChat\training\llamafactory_distill_0.6b.yaml
+
+model_name_or_path: D:/MyCode/JChat/models/Qwen3-0.6B
+trust_remote_code: true
+
+stage: sft
+do_train: true
+finetuning_type: lora
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target: all
+
+dataset: persona_distill
+dataset_dir: D:/MyCode/JChat/data
+template: qwen3
+cutoff_len: 1024
+overwrite_cache: true
+preprocessing_num_workers: 4
+
+output_dir: D:/MyCode/JChat/outputs/qwen3-0.6b-distill
+logging_steps: 10
+save_steps: 200
+plot_loss: true
+overwrite_output_dir: true
+
+per_device_train_batch_size: 4
+gradient_accumulation_steps: 4
+learning_rate: 2.0e-4
+num_train_epochs: 3.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+fp16: true
+bf16: false
+gradient_checkpointing: true
+optim: paged_adamw_8bit
